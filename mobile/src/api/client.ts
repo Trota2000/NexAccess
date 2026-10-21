@@ -1,4 +1,5 @@
 // Source of truth: sof2702/NexAccess, commit 81511f3 (DTOs + controllers).
+import { resolveOperation } from "./contract";
 export type SystemRole = "ADMIN" | "SEGURIDAD" | "RRHH";
 export interface ApiUser {
   id: number;
@@ -117,6 +118,7 @@ function parseJson(text: string): unknown {
 export class ApiClient {
   private token?: string;
   private expiresAt = 0;
+  private operatorRole?: SystemRole;
   private epoch = 0;
   private pending = new Set<AbortController>();
   onExpired?: () => void;
@@ -136,6 +138,7 @@ export class ApiClient {
   }
   logout(notify = false) {
     this.token = undefined;
+    this.operatorRole = undefined;
     this.expiresAt = 0;
     this.epoch++;
     for (const request of this.pending) request.abort();
@@ -183,6 +186,7 @@ export class ApiClient {
     if (version !== this.epoch)
       throw new ApiError("La sesión cambió.", 0, "STALE_REQUEST");
     this.token = result.accessToken;
+    this.operatorRole = user.role;
     this.expiresAt = Date.parse(result.expiresAt);
     return { user, expiresAt: result.expiresAt };
   }
@@ -199,6 +203,50 @@ export class ApiClient {
   ): Promise<unknown> {
     if (!/^\/[a-z0-9/-]+$/.test(path))
       throw new ApiError("Ruta de API inválida.", 0, "INVALID_PATH");
+    const method = (options.method ?? "GET").toUpperCase();
+    const operation = resolveOperation(path, method);
+    if (!operation)
+      throw new ApiError(
+        "La operación no está disponible en el contrato de la API.",
+        400,
+        "UNSUPPORTED_OPERATION",
+      );
+    if (operation.security === "device")
+      throw new ApiError(
+        "Esta operación corresponde exclusivamente al dispositivo.",
+        403,
+        "DEVICE_ONLY",
+      );
+    if (
+      options.body &&
+      (!operation.bodyKeys ||
+        Object.keys(options.body).some((k) => !operation.bodyKeys!.includes(k)))
+    )
+      throw new ApiError(
+        "El formulario contiene campos que no pertenecen a esta operación.",
+        400,
+        "INVALID_BODY",
+      );
+    if (
+      options.anonymous &&
+      operation.security === "bearer" &&
+      !(operation.id === "me" && options.candidateToken)
+    )
+      throw new ApiError(
+        "Esta operación requiere iniciar sesión.",
+        401,
+        "UNAUTHORIZED",
+      );
+    if (
+      !options.anonymous &&
+      this.operatorRole &&
+      !operation.roles.includes(this.operatorRole)
+    )
+      throw new ApiError(
+        "Tu perfil no permite esta operación.",
+        403,
+        "FORBIDDEN",
+      );
     if (!options.anonymous && (!this.token || this.expiresAt <= Date.now())) {
       this.logout(true);
       throw new ApiError(
@@ -224,7 +272,7 @@ export class ApiClient {
       const response = await transport(
         `${this.baseUrl}${path}${query ? `?${query}` : ""}`,
         {
-          method: options.method ?? "GET",
+          method,
           signal: controller.signal,
           credentials: "omit",
           redirect: "error",

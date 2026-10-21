@@ -282,7 +282,8 @@ const server = http.createServer(async (req, res) => {
       else {
         const physical = data.roles.find((r) => r.id === Number(arg));
         if (!physical) return fail(404, "Rol inexistente");
-        row.roles = [physical];
+        if (!row.roles.some((r) => r.id === physical.id))
+          row.roles.push(physical);
       }
       return send(row);
     }
@@ -311,6 +312,21 @@ const server = http.createServer(async (req, res) => {
       created.fullName = `${body.firstName} ${body.lastName}`;
       created.roles = [];
     }
+    delete created.password;
+    if (key === "credentials") {
+      created.employeeName = data.employees.find(
+        (e) => e.id === body.employeeId,
+      )?.fullName;
+      created.status = "ACTIVA";
+      created.issuedAt = now;
+      created.revokedAt = null;
+    }
+    if (key === "attendance") {
+      created.employeeName = data.employees.find(
+        (e) => e.id === body.employeeId,
+      )?.fullName;
+      created.source = "MANUAL";
+    }
     if (key === "enrollments") {
       created.status = "PENDIENTE";
       created.expiresAt = new Date(Date.now() + 60000).toISOString();
@@ -325,7 +341,15 @@ const server = http.createServer(async (req, res) => {
   }
   let filtered = list.filter((row) =>
     [...url.searchParams].every(([key, value]) => {
-      if (["page", "pageSize", "from", "to"].includes(key)) return true;
+      if (["page", "pageSize"].includes(key)) return true;
+      if (key === "from")
+        return (
+          !row.occurredAt || Date.parse(row.occurredAt) >= Date.parse(value)
+        );
+      if (key === "to")
+        return (
+          !row.occurredAt || Date.parse(row.occurredAt) <= Date.parse(value)
+        );
       if (key === "search")
         return Object.values(row).some((v) =>
           String(v).toLowerCase().includes(value.toLowerCase()),

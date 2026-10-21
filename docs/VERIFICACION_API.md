@@ -12,6 +12,20 @@ Hay **29 pruebas de integración** aprobadas: las 25 originales y 4 nuevas de pr
 
 Para cargar la configuración nueva en otra copia, detener Expo y ejecutar `npm run web:api`; abrir **http://localhost:8091/login**. Ya no se necesita una segunda terminal.
 
+## Ampliación por módulos con OpenAPI
+
+Se contrastaron las **53 operaciones** del OpenAPI manual aportado por el usuario con el catálogo del cliente: 48 bearer, 2 públicas y 3 de dispositivo. El contrato manual tiene esquemas abiertos; los campos se verificaron además contra DTO/controladores del backend fijado. Esta comparación no demuestra que producción ejecute ese mismo commit.
+
+Se agregaron pruebas de cobertura de rutas/autenticación, bearer en todas las operaciones del operador, bloqueo previo al transporte por perfil, exclusión de operaciones de dispositivo, rechazo de campos ajenos, recibos sin secretos, respuestas ambiguas, enlaces contextuales y métricas con errores parciales. Las pruebas de pantalla incluyen alta de empleado con DTO exacto e ID del servidor, errores de validación visibles dentro del formulario, enrolamiento con empleado preseleccionado y bloqueo de escritura incierta con revisión explícita.
+
+Resultado local de esta ampliación: **35 pruebas de integración, 24 de móvil/interfaz y 32 de maqueta web aprobadas**. TypeScript de ambas aplicaciones sin errores. La app web se exportó correctamente (bundle 1,4 MB). Estos resultados reemplazan los conteos históricos de las secciones siguientes; no representan ejecución en un dispositivo físico.
+
+La comprobación manual usó Expo existente en 8091 y un gateway de pruebas en **8095** que dirige la API exclusivamente al fixture de loopback 9060. No se alteró la configuración del servicio público. Se verificaron alta y consulta del empleado sintético, enrolamiento preseleccionado, seguimiento y cancelación confirmada, Dashboard, navegación de reportes con rango precargado, incidencias rechazadas y comprobación de health + sesión. Se revisaron tamaños 390×844 y 1280×900. Las capturas contienen solo datos ficticios.
+
+![Dashboard con datos sintéticos, escritorio](screenshots/api-dashboard-escritorio.jpg)
+
+![Dashboard con datos sintéticos, tamaño de teléfono](screenshots/api-dashboard-movil.jpg)
+
 ## Evidencia de la implementación inicial
 
 Fecha: 21/10/2026. Backend revisado: `81511f3e3680b3ef6c45ac3b3a85a3431df2b3b5`. Frontend de partida: `a6f06b24261991c44e95ddd5d60c93f6eb9f2229`. Node 24.19.0 en Windows.

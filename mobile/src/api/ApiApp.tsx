@@ -16,6 +16,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 import { ApiClient, ApiError, id, Page, Row, Session } from "./client";
+import Overview, { extraModules } from "./Overview";
+import {
+  createLabels,
+  formErrorMap,
+  relatedFlows,
+  RelatedFlow,
+  writeReceipt,
+} from "./workflows";
 import {
   authorize,
   bodyFor,
@@ -408,10 +416,14 @@ function EditForm({
   form,
   client,
   onClose,
+  serverError = "",
+  fieldErrors = {},
 }: {
   form: FormSpec;
   client: ApiClient;
   onClose: () => void;
+  serverError?: string;
+  fieldErrors?: Record<string, string>;
 }) {
   const [draft, setDraft] = useState<Row>(() =>
     Object.fromEntries(
@@ -433,15 +445,22 @@ function EditForm({
       {form.fields
         .filter((f) => !form.edit || !f.createOnly)
         .map((f) => (
-          <Input
-            key={f.key}
-            field={f}
-            value={draft[f.key]}
-            client={client}
-            onChange={(value) => setDraft((d) => ({ ...d, [f.key]: value }))}
-          />
+          <View key={f.key} style={{ gap: 6 }}>
+            <Input
+              key={f.key}
+              field={f}
+              value={draft[f.key]}
+              client={client}
+              onChange={(value) => setDraft((d) => ({ ...d, [f.key]: value }))}
+            />
+            {fieldErrors[f.key] && (
+              <Text accessibilityRole="alert" style={s.error}>
+                {fieldErrors[f.key]}
+              </Text>
+            )}
+          </View>
         ))}
-      <ErrorNotice message={error} />
+      <ErrorNotice message={error || serverError} />
       <Button
         title="Revisar cambios"
         onPress={() => {
@@ -480,8 +499,14 @@ function Workspace({
   onLogout: () => void;
 }) {
   const available = resources.filter((r) => r.read.includes(session.user.role));
+  const supplements = extraModules.filter(
+    (m) =>
+      m.key !== "alertas" || ["ADMIN", "SEGURIDAD"].includes(session.user.role),
+  );
+  const navigation = [supplements[0], ...available, ...supplements.slice(1)];
   const [key, setKey] = useState("employees");
-  const r = resource(key);
+  const supplemental = supplements.some((m) => m.key === key);
+  const r = resource(supplemental ? "employees" : key);
   const [filters, setFilters] = useState<Row>({});
   const [applied, setApplied] = useState<Row>({});
   const [page, setPage] = useState(1);
@@ -496,7 +521,15 @@ function Workspace({
   const [form, setForm] = useState<FormSpec>();
   const [pending, setPending] = useState<Mutation>();
   const [writing, setWriting] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
+  const [uncertain, setUncertain] = useState<{
+    key: string;
+    title: string;
+    reviewed: boolean;
+  }>();
+  const [contextLabel, setContextLabel] = useState("");
+  const [saved, setSaved] = useState<{ key: string; row: Row }>();
+  const [serverFields, setServerFields] = useState<Record<string, string>>({});
+  const [recentEnrollments, setRecentEnrollments] = useState<number[]>([]);
   const [secret, setSecret] = useState<string>();
   const requestSerial = useRef(0);
   const writeLock = useRef(false);
@@ -524,6 +557,7 @@ function Workspace({
       setBusy(true);
       setError("");
       setData(emptyPage);
+      if (supplemental) return emptyPage;
       authorize(session.user.role, r);
       const query = queryFor(r, applied, page);
       if (r.key === "access-events" && deviceScope)
@@ -552,7 +586,10 @@ function Workspace({
       .then((p) => {
         if (current && serial === requestSerial.current) {
           setData(p);
-          if (r.key !== "enrollments" || applied.id) setUncertain(false);
+          if (!supplemental && (r.key !== "enrollments" || applied.id))
+            setUncertain((current) =>
+              current?.key === r.key ? { ...current, reviewed: true } : current,
+            );
         }
       })
       .catch((e) => {
@@ -577,23 +614,64 @@ function Workspace({
     session.user.role,
     deviceScope,
     requestKey,
+    supplemental,
   ]);
-  function navigate(next: string) {
+  const enrollmentToWatch =
+    key === "enrollments" && selected?.status === "PENDIENTE"
+      ? selected.id
+      : undefined;
+  useEffect(() => {
+    if (!enrollmentToWatch || form || pending) return;
+    let active = true,
+      inFlight = false;
+    const enrollmentId = id(enrollmentToWatch);
+    const timer = setInterval(async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const row = (await client.request(
+          `/enrollments/${enrollmentId}`,
+        )) as Row;
+        if (active) {
+          setSelected(row);
+          setData((current) => ({
+            ...current,
+            items: current.items.map((item) =>
+              item.id === row.id ? row : item,
+            ),
+          }));
+        }
+      } catch (e) {
+        if (active) setError(errorText(e));
+      } finally {
+        inFlight = false;
+      }
+    }, 5000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [client, enrollmentToWatch, form, pending]);
+  function navigate(next: string, flow?: RelatedFlow) {
     if (writing) return;
     detailSerial.current++;
-    setDeviceScope(undefined);
+    setDeviceScope(flow?.deviceScope);
     setKey(next);
-    setFilters({});
-    setApplied({});
+    setFilters(flow?.query ?? {});
+    setApplied(flow?.query ?? {});
     setPage(1);
-    setReport(false);
+    setReport(flow?.report ?? false);
     setSelected(undefined);
     setForm(undefined);
     setPending(undefined);
     setSecret(undefined);
     setNotice("");
     setError("");
-    setShowFilters(false);
+    setShowFilters(!!flow?.query);
+    setContextLabel(flow?.label ?? "");
+    setSaved(undefined);
+    setServerFields({});
+    if (flow?.seed) createOrEdit(undefined, flow.seed, resource(next));
   }
   function prepare(m: Mutation) {
     authorize(session.user.role, m.resource, true);
@@ -601,35 +679,45 @@ function Workspace({
       throw new ApiError(
         "Actualizá la lista y verificá el resultado antes de repetir una escritura.",
       );
+    setError("");
+    setServerFields({});
     setPending(m);
   }
   function successSecret(result: unknown) {
     const v = result as Row;
     if (typeof v?.deviceKey === "string") setSecret(v.deviceKey);
   }
-  function createOrEdit(row?: Row) {
+  function createOrEdit(row?: Row, seed?: Row, target: Resource = r) {
+    setError("");
+    setServerFields({});
     setForm({
       title: row
         ? `Editar ${titleOf(row)}`
-        : r.key === "attendance"
-          ? "Agregar marcación manual"
-          : `Nuevo registro: ${r.title}`,
-      fields: r.fields,
-      row,
+        : (createLabels[target.key] ?? `Nuevo registro: ${target.title}`),
+      fields: target.fields,
+      row: row ?? seed,
       edit: !!row,
       submit: (body) =>
         prepare({
           title: row ? "Guardar cambios" : "Crear registro",
-          resource: r,
-          path: `/${r.key}${row ? `/${id(row.id)}` : ""}`,
+          resource: target,
+          path: `/${target.key}${row ? `/${id(row.id)}` : ""}`,
           method: row ? "PUT" : "POST",
           body,
           onSuccess: (result) => {
             successSecret(result);
-            if (r.key === "enrollments") {
+            const receipt = writeReceipt(target.key, result);
+            setSaved({ key: target.key, row: receipt });
+            if (target.key === "enrollments") {
               const resultId = id((result as Row).id);
               setApplied({ id: resultId });
               setFilters({ id: resultId });
+              setRecentEnrollments((current) =>
+                [
+                  resultId,
+                  ...current.filter((value) => value !== resultId),
+                ].slice(0, 10),
+              );
             }
           },
         }),
@@ -668,11 +756,25 @@ function Workspace({
     } catch (e) {
       setPending(undefined);
       setError(errorText(e));
+      if (e instanceof ApiError)
+        setServerFields(formErrorMap(e.errors, mutation.resource.key));
       if (
         e instanceof ApiError &&
-        (["NETWORK_ERROR", "TIMEOUT"].includes(e.code) || e.status >= 500)
+        ([
+          "NETWORK_ERROR",
+          "TIMEOUT",
+          "WRITE_RECEIPT_INVALID",
+          "CONTRACT_ERROR",
+          "UNSAFE_NUMBER",
+          "API_ROUTE_NOT_CONFIGURED",
+        ].includes(e.code) ||
+          e.status >= 500)
       ) {
-        setUncertain(true);
+        setUncertain({
+          key: mutation.resource.key,
+          title: mutation.title,
+          reviewed: false,
+        });
         setForm(undefined);
         setSelected(undefined);
       }
@@ -772,7 +874,7 @@ function Workspace({
             horizontal={width < 1000}
             contentContainerStyle={{ gap: 8, padding: 12 }}
           >
-            {available.map((module) => (
+            {navigation.map((module) => (
               <Pressable
                 key={module.key}
                 disabled={writing}
@@ -794,194 +896,325 @@ function Workspace({
           contentContainerStyle={s.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text accessibilityRole="header" style={s.title}>
-            {r.title}
-          </Text>
-          <Text style={s.muted}>{r.description}</Text>
-          <View style={s.row}>
-            <Button
-              title="Actualizar"
-              secondary
-              disabled={busy || writing}
-              onPress={() => {
-                setSelected(undefined);
-                detailSerial.current++;
-                setRevision((n) => n + 1);
-              }}
-            />
-            {!!r.filters.length && (
-              <Button
-                title={showFilters ? "Ocultar filtros" : "Filtros"}
-                secondary
-                disabled={writing}
-                onPress={() => setShowFilters((v) => !v)}
-              />
-            )}
-            {r.create && canWrite && (
-              <Button
-                title={
-                  r.key === "attendance"
-                    ? "Agregar marcación manual"
-                    : "Nuevo registro"
-                }
-                disabled={writing || busy}
-                onPress={() => createOrEdit()}
-              />
-            )}
-            {r.export && (
-              <Button
-                title={
-                  Platform.OS === "web"
-                    ? "Descargar CSV"
-                    : "Compartir CSV como texto"
-                }
-                secondary
-                disabled={writing || busy}
-                onPress={exportCsv}
-              />
-            )}
-            {r.key === "attendance" && (
-              <Button
-                title={report ? "Ver marcaciones" : "Reporte diario"}
-                secondary
-                disabled={writing || busy}
-                onPress={() => {
-                  setPage(1);
-                  setReport((v) => !v);
-                  setSelected(undefined);
-                }}
-              />
-            )}
-          </View>
-          {showFilters && (
-            <View style={s.card}>
-              {r.filters
-                .filter((f) => !(deviceScope && f.key === "deviceId"))
-                .map((f) => (
-                  <Input
-                    key={f.key}
-                    field={f}
-                    filter
-                    value={filters[f.key]}
-                    client={client}
-                    onChange={(v) => setFilters((d) => ({ ...d, [f.key]: v }))}
-                  />
-                ))}
-              <View style={s.row}>
-                <Button
-                  title="Aplicar filtros"
-                  disabled={writing}
-                  onPress={() => {
-                    try {
-                      queryFor(r, filters);
-                      setPage(1);
-                      setApplied({ ...filters });
-                      setSelected(undefined);
-                      detailSerial.current++;
-                      setError("");
-                    } catch (e) {
-                      setError(errorText(e));
-                    }
-                  }}
-                />
-                <Button
-                  title="Limpiar filtros"
-                  secondary
-                  disabled={writing}
-                  onPress={() => {
-                    setFilters({});
-                    setApplied({});
-                    setPage(1);
-                  }}
-                />
-              </View>
-            </View>
-          )}
-          {!!notice && (
-            <Text accessibilityLiveRegion="polite" style={s.notice}>
-              {notice}
-            </Text>
-          )}
-          <ErrorNotice message={error} />
-          {uncertain && (
-            <ErrorNotice message="No se pudo confirmar el resultado de la escritura. Actualizá y revisá los registros antes de repetirla." />
-          )}
-          {busy ? (
-            <ActivityIndicator
-              accessibilityLabel="Cargando registros"
-              color={color.primary}
-              size="large"
+          {supplemental ? (
+            <Overview
+              key={key}
+              view={key}
+              client={client}
+              session={session}
+              onOpen={(flow) => navigate(flow.key, flow)}
             />
           ) : (
             <>
-              <Text style={s.label}>
-                {data.totalItems} {report ? "resúmenes diarios" : "registros"} ·{" "}
-                {report
-                  ? "Zona del reporte: configurada en el servidor"
-                  : "Paginación del servidor"}
+              <Text accessibilityRole="header" style={s.title}>
+                {r.title}
               </Text>
-              {!data.items.length && (
+              <Text style={s.muted}>{r.description}</Text>
+              {!!contextLabel && (
                 <View style={s.card}>
-                  <Text style={s.heading}>
-                    {r.key === "enrollments"
-                      ? "Consultar un enrolamiento"
-                      : "Sin registros"}
-                  </Text>
-                  <Text style={s.muted}>
-                    {r.key === "enrollments"
-                      ? "Abrí Filtros e ingresá el ID, o iniciá un nuevo enrolamiento."
-                      : "No hay resultados para los filtros aplicados."}
-                  </Text>
+                  <Text style={s.label}>Consulta: {contextLabel}</Text>
+                  <Button
+                    title="Quitar contexto y filtros"
+                    secondary
+                    onPress={() => navigate(key)}
+                  />
                 </View>
               )}
-              {data.items.map((row, index) => (
-                <Pressable
-                  key={`${row.id ?? row.employeeId ?? index}-${row.date ?? ""}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ver detalle de ${titleOf(row)}`}
-                  onPress={() => void openDetails(row)}
-                  style={s.card}
-                >
-                  <Text style={s.heading}>{titleOf(row)}</Text>
+              {saved?.key === key && (
+                <View style={s.card}>
+                  <Text style={s.heading}>
+                    Registro guardado · ID {String(saved.row.id)}
+                  </Text>
                   <Text style={s.muted}>
-                    {row.id !== undefined
-                      ? `ID ${row.id}`
-                      : String(row.date ?? "")}
+                    Confirmado por el servidor. Puede quedar fuera de los
+                    filtros actuales.
                   </Text>
-                  <View style={s.summary}>
-                    {columns.slice(0, 5).map((k) => (
-                      <Text key={k} style={s.text}>
-                        {labels[k] ?? k}: {display(k, row[k])}
-                      </Text>
-                    ))}
-                  </View>
-                  <Text style={{ color: color.primary, fontWeight: "600" }}>
-                    Ver detalle →
-                  </Text>
-                </Pressable>
-              ))}
-              {r.paged && !report && (
-                <Pagination
-                  data={data}
-                  onPage={setPage}
+                  <Button
+                    title="Ver registro guardado"
+                    secondary
+                    onPress={() => void openDetails(saved.row)}
+                  />
+                </View>
+              )}
+              <View style={s.row}>
+                <Button
+                  title="Actualizar"
+                  secondary
                   disabled={busy || writing}
+                  onPress={() => {
+                    setSelected(undefined);
+                    detailSerial.current++;
+                    setRevision((n) => n + 1);
+                  }}
                 />
+                {!!r.filters.length && r.key !== "enrollments" && (
+                  <Button
+                    title={showFilters ? "Ocultar filtros" : "Filtros"}
+                    secondary
+                    disabled={writing}
+                    onPress={() => setShowFilters((v) => !v)}
+                  />
+                )}
+                {r.create && canWrite && (
+                  <Button
+                    title={createLabels[r.key] ?? "Nuevo registro"}
+                    disabled={writing || busy}
+                    onPress={() => createOrEdit()}
+                  />
+                )}
+                {r.export && (
+                  <Button
+                    title={
+                      Platform.OS === "web"
+                        ? "Descargar CSV"
+                        : "Compartir CSV como texto"
+                    }
+                    secondary
+                    disabled={writing || busy}
+                    onPress={exportCsv}
+                  />
+                )}
+                {r.key === "attendance" && (
+                  <Button
+                    title={report ? "Ver marcaciones" : "Reporte diario"}
+                    secondary
+                    disabled={writing || busy}
+                    onPress={() => {
+                      setPage(1);
+                      setReport((v) => !v);
+                      setSelected(undefined);
+                    }}
+                  />
+                )}
+              </View>
+              {r.key === "enrollments" && (
+                <View style={s.card}>
+                  <Text style={s.heading}>Seguimiento por ID</Text>
+                  <Text style={s.muted}>
+                    Iniciá un enrolamiento y acercá la tarjeta al lector
+                    indicado. Abrí su detalle para actualizar el estado cada 5
+                    segundos mientras esté pendiente.
+                  </Text>
+                  <Input
+                    field={{
+                      key: "id",
+                      label: "ID de enrolamiento",
+                      type: "id",
+                      required: true,
+                    }}
+                    value={filters.id}
+                    client={client}
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, id: value }))
+                    }
+                  />
+                  <Button
+                    title="Consultar enrolamiento"
+                    disabled={writing}
+                    onPress={() => {
+                      try {
+                        const value = id(filters.id);
+                        setApplied({ id: value });
+                        setPage(1);
+                        setRevision((n) => n + 1);
+                        setRecentEnrollments((current) =>
+                          [value, ...current.filter((v) => v !== value)].slice(
+                            0,
+                            10,
+                          ),
+                        );
+                      } catch (e) {
+                        setError(errorText(e));
+                      }
+                    }}
+                  />
+                  {!!recentEnrollments.length && (
+                    <>
+                      <Text style={s.muted}>
+                        IDs consultados en esta sesión
+                      </Text>
+                      <View style={s.row}>
+                        {recentEnrollments.map((value) => (
+                          <Button
+                            key={value}
+                            title={`Consultar ID ${value}`}
+                            secondary
+                            onPress={() => {
+                              setFilters({ id: value });
+                              setApplied({ id: value });
+                              setRevision((n) => n + 1);
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </View>
+              )}
+              {showFilters && r.key !== "enrollments" && (
+                <View style={s.card}>
+                  {r.filters
+                    .filter((f) => !(deviceScope && f.key === "deviceId"))
+                    .map((f) => (
+                      <Input
+                        key={f.key}
+                        field={f}
+                        filter
+                        value={filters[f.key]}
+                        client={client}
+                        onChange={(v) =>
+                          setFilters((d) => ({ ...d, [f.key]: v }))
+                        }
+                      />
+                    ))}
+                  <View style={s.row}>
+                    <Button
+                      title="Aplicar filtros"
+                      disabled={writing}
+                      onPress={() => {
+                        try {
+                          queryFor(r, filters);
+                          setPage(1);
+                          setApplied({ ...filters });
+                          setSelected(undefined);
+                          detailSerial.current++;
+                          setError("");
+                        } catch (e) {
+                          setError(errorText(e));
+                        }
+                      }}
+                    />
+                    <Button
+                      title="Limpiar filtros"
+                      secondary
+                      disabled={writing}
+                      onPress={() => {
+                        setContextLabel("");
+                        setDeviceScope(undefined);
+                        setFilters({});
+                        setApplied({});
+                        setPage(1);
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+              {!!notice && (
+                <Text accessibilityLiveRegion="polite" style={s.notice}>
+                  {notice}
+                </Text>
+              )}
+              <ErrorNotice message={error} />
+              {uncertain && (
+                <View style={s.card}>
+                  <ErrorNotice
+                    message={`No se pudo confirmar: ${uncertain.title}. Actualizá y revisá ${resource(uncertain.key).title} antes de volver a escribir.`}
+                  />
+                  {uncertain.key !== key ? (
+                    <Button
+                      title="Ir al módulo para revisar"
+                      secondary
+                      onPress={() => navigate(uncertain.key)}
+                    />
+                  ) : (
+                    <Button
+                      title="Ya revisé el resultado; habilitar operaciones"
+                      secondary
+                      disabled={!uncertain.reviewed || busy}
+                      onPress={() => {
+                        setUncertain(undefined);
+                        setError("");
+                      }}
+                    />
+                  )}
+                </View>
+              )}
+              {busy ? (
+                <ActivityIndicator
+                  accessibilityLabel="Cargando registros"
+                  color={color.primary}
+                  size="large"
+                />
+              ) : (
+                <>
+                  <Text style={s.label}>
+                    {data.totalItems}{" "}
+                    {report ? "resúmenes diarios" : "registros"} ·{" "}
+                    {report
+                      ? "Zona del reporte: configurada en el servidor"
+                      : "Paginación del servidor"}
+                  </Text>
+                  {!data.items.length && (
+                    <View style={s.card}>
+                      <Text style={s.heading}>
+                        {r.key === "enrollments"
+                          ? "Consultar un enrolamiento"
+                          : "Sin registros"}
+                      </Text>
+                      <Text style={s.muted}>
+                        {r.key === "enrollments"
+                          ? "Ingresá el ID en Seguimiento o iniciá un nuevo enrolamiento."
+                          : "No hay resultados para los filtros aplicados."}
+                      </Text>
+                    </View>
+                  )}
+                  {data.items.map((row, index) => (
+                    <Pressable
+                      key={`${row.id ?? row.employeeId ?? index}-${row.date ?? ""}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver detalle de ${titleOf(row)}`}
+                      onPress={() => void openDetails(row)}
+                      style={s.card}
+                    >
+                      <Text style={s.heading}>{titleOf(row)}</Text>
+                      <Text style={s.muted}>
+                        {row.id !== undefined
+                          ? `ID ${row.id}`
+                          : String(row.date ?? "")}
+                      </Text>
+                      <View style={s.summary}>
+                        {columns.slice(0, 5).map((k) => (
+                          <Text key={k} style={s.text}>
+                            {labels[k] ?? k}: {display(k, row[k])}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text style={{ color: color.primary, fontWeight: "600" }}>
+                        Ver detalle →
+                      </Text>
+                    </Pressable>
+                  ))}
+                  {r.paged && !report && (
+                    <Pagination
+                      data={data}
+                      onPage={setPage}
+                      disabled={busy || writing}
+                    />
+                  )}
+                </>
               )}
             </>
           )}
-          <View style={s.card}>
-            <Text style={s.heading}>Funciones aún sin servicio</Text>
-            <Text style={s.muted}>
-              Autoservicio del empleado, notificaciones, gestión de alertas y
-              preferencias institucionales requieren endpoints adicionales. No
-              se generan datos simulados en esta sesión.
-            </Text>
-          </View>
         </ScrollView>
       </View>
       {selected && !form && !pending && (
         <Sheet title={titleOf(selected)} onClose={detailClose}>
           <Details row={selected} columns={["id", ...columns]} />
+          <ErrorNotice message={error} />
+          {r.key === "enrollments" && selected.status === "PENDIENTE" && (
+            <Text accessibilityLiveRegion="polite" style={s.muted}>
+              Esperando al lector. Actualización automática cada 5 segundos.
+            </Text>
+          )}
+          {relatedFlows(r.key, selected, session.user.role).map((flow) => (
+            <Button
+              key={flow.title}
+              title={flow.title}
+              secondary
+              disabled={writing || !!(flow.seed && uncertain)}
+              onPress={() => navigate(flow.key, flow)}
+            />
+          ))}
           {canWrite && r.edit && (
             <Button
               title="Editar registro"
@@ -1045,20 +1278,6 @@ function Workspace({
                     onSuccess: successSecret,
                   })
                 }
-              />
-              <Button
-                title="Ver eventos de este dispositivo"
-                secondary
-                onPress={() => {
-                  const deviceId = id(selected.id);
-                  detailClose();
-                  setKey("access-events");
-                  setDeviceScope(deviceId);
-                  setFilters({ deviceId });
-                  setApplied({ deviceId });
-                  setPage(1);
-                  setReport(false);
-                }}
               />
             </>
           )}
@@ -1161,6 +1380,8 @@ function Workspace({
             },
           }}
           client={client}
+          serverError={error}
+          fieldErrors={serverFields}
           onClose={() => setForm(undefined)}
         />
       )}
