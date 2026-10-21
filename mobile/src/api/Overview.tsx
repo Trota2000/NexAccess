@@ -1,0 +1,410 @@
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { ApiClient, Row, Session } from "./client";
+import { display, pageOf, resource } from "./resources";
+import { loadMetrics, Metric, RelatedFlow } from "./workflows";
+export const extraModules = [
+  { key: "dashboard", title: "Dashboard" },
+  { key: "reportes", title: "Reportes" },
+  { key: "alertas", title: "Alertas" },
+  { key: "configuracion", title: "Configuración" },
+];
+function Action({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={s.button}>
+      <Text style={s.action}>{title}</Text>
+    </Pressable>
+  );
+}
+function Dashboard({
+  client,
+  session,
+  onOpen,
+}: {
+  client: ApiClient;
+  session: Session;
+  onOpen: (f: RelatedFlow) => void;
+}) {
+  const [metrics, setMetrics] = useState<Metric[]>();
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let current = true;
+    loadMetrics(client, session.user.role).then((result) => {
+      if (current) setMetrics(result);
+    });
+    return () => {
+      current = false;
+    };
+  }, [client, session.user.role, revision]);
+  return (
+    <>
+      <Text style={s.title}>Dashboard</Text>
+      <Text style={s.text}>
+        Resumen del servidor según tu perfil. Los eventos y marcaciones
+        corresponden a las últimas 24 horas; los conteos incluyen todas las
+        páginas.
+      </Text>
+      <Action
+        title="Actualizar resumen"
+        onPress={() => {
+          setMetrics(undefined);
+          setRevision((v) => v + 1);
+        }}
+      />
+      {!metrics ? (
+        <ActivityIndicator
+          accessibilityLabel="Cargando resumen"
+          color="#286c64"
+        />
+      ) : (
+        <View style={s.grid}>
+          {metrics.map((m) => (
+            <View key={m.label} style={s.card}>
+              <Text style={s.heading}>{m.label}</Text>
+              <Text style={s.number}>
+                {m.value === undefined ? "—" : m.value.toLocaleString("es-PY")}
+              </Text>
+              {m.error && (
+                <Text accessibilityRole="alert" style={s.error}>
+                  {m.error}
+                </Text>
+              )}
+              {m.hint && <Text style={s.muted}>{m.hint}</Text>}
+              <Action
+                title={`Consultar ${m.label.toLowerCase()}`}
+                onPress={() =>
+                  onOpen({
+                    title: m.label,
+                    key: m.key,
+                    query: m.query,
+                    label: m.label,
+                  })
+                }
+              />
+            </View>
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+function Reports({
+  session,
+  onOpen,
+}: {
+  session: Session;
+  onOpen: (f: RelatedFlow) => void;
+}) {
+  const end = new Date(),
+    query = {
+      from: new Date(end.getTime() - 7 * 86400000).toISOString(),
+      to: end.toISOString(),
+    };
+  const security = ["ADMIN", "SEGURIDAD"].includes(session.user.role),
+    hr = ["ADMIN", "RRHH"].includes(session.user.role);
+  return (
+    <>
+      <Text style={s.title}>Reportes</Text>
+      <Text style={s.text}>
+        Elegí el informe, revisá el rango y aplicá filtros. Los CSV se generan
+        en el servidor con el mismo criterio de consulta.
+      </Text>
+      {security && (
+        <View style={s.card}>
+          <Text style={s.heading}>Control de accesos</Text>
+          <Text style={s.muted}>
+            Autorizados, rechazados, empleado, área y lector. Rango inicial:
+            últimos 7 días.
+          </Text>
+          <Action
+            title="Preparar reporte de accesos"
+            onPress={() =>
+              onOpen({
+                title: "Reporte de accesos",
+                key: "access-events",
+                query,
+                label: "Últimos 7 días",
+              })
+            }
+          />
+        </View>
+      )}
+      {hr && (
+        <View style={s.card}>
+          <Text style={s.heading}>Asistencia</Text>
+          <Text style={s.muted}>
+            Marcaciones de entrada/salida y resumen diario calculado por el
+            backend, sin cálculos salariales.
+          </Text>
+          <Action
+            title="Preparar reporte de asistencia"
+            onPress={() =>
+              onOpen({
+                title: "Reporte de asistencia",
+                key: "attendance",
+                query,
+                report: true,
+                label: "Últimos 7 días",
+              })
+            }
+          />
+        </View>
+      )}
+      {session.user.role === "ADMIN" && (
+        <View style={s.card}>
+          <Text style={s.heading}>Auditoría</Text>
+          <Text style={s.muted}>
+            Consulta filtrada de acciones. La API actual no ofrece exportación
+            de auditoría.
+          </Text>
+          <Action
+            title="Consultar auditoría"
+            onPress={() => onOpen({ title: "Auditoría", key: "audit", query })}
+          />
+        </View>
+      )}
+    </>
+  );
+}
+function Incidents({
+  client,
+  onOpen,
+}: {
+  client: ApiClient;
+  onOpen: (f: RelatedFlow) => void;
+}) {
+  const [data, setData] = useState<{
+    events: Row[];
+    total: number;
+    error?: string;
+  }>();
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let current = true;
+    const to = new Date(),
+      from = new Date(to.getTime() - 86400000);
+    client
+      .request("/access-events", {
+        query: {
+          result: "RECHAZADO",
+          from: from.toISOString(),
+          to: to.toISOString(),
+          page: 1,
+          pageSize: 5,
+        },
+      })
+      .then((v) => {
+        const p = pageOf(v, resource("access-events"));
+        if (current) setData({ events: p.items, total: p.totalItems });
+      })
+      .catch((e) => {
+        if (current)
+          setData({
+            events: [],
+            total: 0,
+            error: e instanceof Error ? e.message : "No se pudo cargar.",
+          });
+      });
+    return () => {
+      current = false;
+    };
+  }, [client, revision]);
+  return (
+    <>
+      <Text style={s.title}>Incidencias observadas</Text>
+      <Text style={s.text}>
+        Accesos rechazados en las últimas 24 horas. Esta consulta no crea
+        alertas ni permite marcarlas como resueltas: esa gestión necesita un
+        servicio adicional.
+      </Text>
+      <Action
+        title="Actualizar incidencias"
+        onPress={() => {
+          setData(undefined);
+          setRevision((v) => v + 1);
+        }}
+      />
+      {!data ? (
+        <ActivityIndicator
+          accessibilityLabel="Cargando incidencias"
+          color="#286c64"
+        />
+      ) : data.error ? (
+        <Text accessibilityRole="alert" style={s.error}>
+          {data.error}
+        </Text>
+      ) : (
+        <>
+          <Text style={s.heading}>{data.total} accesos rechazados</Text>
+          {!data.events.length && (
+            <Text style={s.muted}>
+              No se registraron rechazos en este período.
+            </Text>
+          )}
+          {data.events.map((e) => (
+            <View key={String(e.id)} style={s.card}>
+              <Text style={s.heading}>
+                {String(e.employeeName ?? "Credencial no identificada")}
+              </Text>
+              <Text style={s.text}>{display("occurredAt", e.occurredAt)}</Text>
+              <Text style={s.muted}>
+                {String(e.reason ?? "Sin motivo informado")} ·{" "}
+                {String(e.areaName ?? "Sin área")}
+              </Text>
+            </View>
+          ))}
+          <Action
+            title="Abrir historial de rechazos"
+            onPress={() => {
+              const to = new Date();
+              onOpen({
+                title: "Accesos rechazados",
+                key: "access-events",
+                query: {
+                  result: "RECHAZADO",
+                  from: new Date(to.getTime() - 86400000).toISOString(),
+                  to: to.toISOString(),
+                },
+                label: "Rechazados · últimas 24 horas",
+              });
+            }}
+          />
+        </>
+      )}
+    </>
+  );
+}
+function Settings({
+  client,
+  session,
+}: {
+  client: ApiClient;
+  session: Session;
+}) {
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function check() {
+    if (busy) return;
+    setBusy(true);
+    setStatus("Comprobando…");
+    try {
+      const health = (await client.request("/health", {
+        anonymous: true,
+      })) as Row;
+      const me = (await client.request("/auth/me")) as Row;
+      setStatus(
+        health.status === "ok" && me.isActive
+          ? "Conexión y sesión verificadas."
+          : "La verificación devolvió un estado inesperado.",
+      );
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "No se pudo comprobar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <Text style={s.title}>Configuración y sesión</Text>
+      <View style={s.card}>
+        <Text style={s.heading}>Tu cuenta</Text>
+        <Text style={s.text}>Usuario: {session.user.username}</Text>
+        <Text style={s.text}>Perfil del sistema: {session.user.role}</Text>
+        <Text style={s.text}>
+          Vencimiento: {display("expiresAt", session.expiresAt)}
+        </Text>
+        <Text style={s.muted}>
+          El token permanece en memoria y se elimina al cerrar sesión o
+          recargar.
+        </Text>
+      </View>
+      <View style={s.card}>
+        <Text style={s.heading}>Servicio</Text>
+        <Text selectable style={s.text}>
+          {client.baseUrl.startsWith("/")
+            ? "API a través de este servidor: "
+            : ""}
+          {client.baseUrl}
+        </Text>
+        <Text style={s.muted}>
+          Se requiere bearer token para los módulos de operadores. Las claves
+          del ESP32 no se usan para iniciar sesión.
+        </Text>
+        <Action
+          title="Verificar conexión y sesión"
+          onPress={() => void check()}
+        />
+        {busy && <ActivityIndicator color="#286c64" />}
+        {!!status && (
+          <Text accessibilityLiveRegion="polite" style={s.text}>
+            {status}
+          </Text>
+        )}
+      </View>
+      <View style={s.card}>
+        <Text style={s.heading}>Configuración institucional</Text>
+        <Text style={s.muted}>
+          La API actual no expone preferencias institucionales ni recuperación
+          pública de contraseña. Contactá al administrador para esos cambios. No
+          se guardan ajustes ficticios como si fueran del servidor.
+        </Text>
+      </View>
+    </>
+  );
+}
+export default function Overview({
+  view,
+  client,
+  session,
+  onOpen,
+}: {
+  view: string;
+  client: ApiClient;
+  session: Session;
+  onOpen: (f: RelatedFlow) => void;
+}) {
+  if (view === "dashboard")
+    return <Dashboard client={client} session={session} onOpen={onOpen} />;
+  if (view === "reportes") return <Reports session={session} onOpen={onOpen} />;
+  if (view === "alertas" && ["ADMIN", "SEGURIDAD"].includes(session.user.role))
+    return <Incidents client={client} onOpen={onOpen} />;
+  return <Settings client={client} session={session} />;
+}
+const s = StyleSheet.create({
+  title: { fontSize: 26, fontWeight: "700", color: "#263e45" },
+  heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
+  text: { fontSize: 15, lineHeight: 23, color: "#263e45" },
+  muted: { fontSize: 14, lineHeight: 21, color: "#586e74" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
+  card: {
+    backgroundColor: "#f8faf8",
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#cedcd7",
+    gap: 12,
+    flexGrow: 1,
+    minWidth: 240,
+  },
+  number: { fontSize: 32, fontWeight: "700", color: "#286c64" },
+  button: {
+    minHeight: 44,
+    backgroundColor: "#dcebe5",
+    padding: 12,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  action: { color: "#286c64", fontWeight: "600" },
+  error: {
+    color: "#8e343c",
+    padding: 12,
+    backgroundColor: "#f7e8e7",
+    borderRadius: 10,
+  },
+});

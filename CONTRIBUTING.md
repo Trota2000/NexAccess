@@ -4,7 +4,7 @@
 
 1. Cloná el repositorio y elegí `web/` o `mobile/`.
 2. Ejecutá `npm ci` dentro de la plantilla elegida.
-3. No ingreses información personal real ni contraseñas reales: los formularios son demostrativos.
+3. En `/demo` y los fixtures usá únicamente datos ficticios. El modo API opera sobre el servidor configurado: realizá solo consultas y escrituras autorizadas.
 
 Si Windows informa que `node` no se reconoce, instalá Node.js con npm y abrí una terminal nueva. Los scripts `run.ps1` son opcionales; los comandos npm del README funcionan con una instalación normal de Node.
 
@@ -21,6 +21,10 @@ Realizá el cambio en su plantilla, verificá el resultado y abrí un Pull Reque
 En un repositorio público cualquiera puede proponer cambios desde un fork. Para subir ramas directamente se necesita permiso de colaborador. La persona propietaria puede concederlo desde Settings → Collaborators; no hace falta compartir tokens ni cuentas.
 
 ## Comprobaciones
+
+Para cambios de integración, editá `integration/source/`, ejecutá `node integration/sync.cjs` desde la raíz y comprobá `node integration/sync.cjs --check`. Las copias en `web/src/api` y `mobile/src/api` permiten instalar cada Expo por separado. El proxy se mantiene en `integration/metro-proxy.cjs` y también se sincroniza. Con las dependencias web instaladas, ejecutá `node --test integration/tests/*.test.cjs`. No uses producción para probar escrituras o credenciales ficticias.
+
+La CI verifica ambas apps y exporta web, pero no despliega el backend. Antes de cambiar contratos, ejecutá `node integration/check-contract.cjs RUTA_BACKEND` contra una copia actual y revisá DTO y permisos. Un health válido no prueba que el despliegue coincida con esa versión.
 
 Dentro de cada plantilla afectada:
 

@@ -1,5 +1,7 @@
 # Verificación — 20/10/2026
 
+> Evidencia histórica de la maqueta `/demo`. La integración posterior está documentada en [VERIFICACION_API.md](../docs/VERIFICACION_API.md).
+
 Entorno: Windows, Node 24.19.0, Expo 57.0.30, Expo Router 57.0.28, React 19.2.3 y React Native 0.86.3.
 
 ## Comprobaciones completadas

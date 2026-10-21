@@ -1,5 +1,7 @@
 # Plantillas web y móvil
 
+> Comparación histórica de las maquetas de `/demo`. El modo conectado de ambas apps usa ahora el mismo contrato API; consultá [la integración vigente](INTEGRACION_API.md).
+
 | Aspecto | Web | Móvil |
 |---|---|---|
 | Propósito | Administración de accesos y registros | Consulta personal y tareas de campo por perfil |
