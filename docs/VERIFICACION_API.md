@@ -1,5 +1,19 @@
 # Verificación de la integración API
 
+## Corrección del login directo en Expo — 21/10/2026
+
+Se reprodujo el fallo reportado en `http://localhost:8091/login`: sin gateway, las rutas `/api/v1/*` caían en el fallback HTML de Expo Router. La comprobación inicial del endpoint con curl no había cubierto este recorrido del navegador.
+
+Se incorporó un proxy en la configuración de Metro de ambas apps para que el mismo puerto de Expo atienda la API. Se mantuvo el gateway externo como alternativa y se actualizó el mensaje cuando una ruta de API responde HTML.
+
+Se verificó el login completo en navegador a través de **8091**, con las credenciales reales facilitadas por el usuario: se abrió el panel `ADMIN`, terminó la carga del listado y no aparecieron errores de API. No se guardaron credenciales ni tokens ni se modificaron datos de negocio. Esto valida el login y la consulta inicial; no valida los CRUD de producción.
+
+Hay **29 pruebas de integración** aprobadas: las 25 originales y 4 nuevas de proxy que comprueban login/health antes del fallback HTML, propagación de errores JSON, 502 ante caída del upstream y rechazo de orígenes inválidos/bucles. Ejecutar `node --test integration/tests/*.test.cjs`. Se comprobaron TypeScript y ESLint de las dos apps.
+
+Para cargar la configuración nueva en otra copia, detener Expo y ejecutar `npm run web:api`; abrir **http://localhost:8091/login**. Ya no se necesita una segunda terminal.
+
+## Evidencia de la implementación inicial
+
 Fecha: 21/10/2026. Backend revisado: `81511f3e3680b3ef6c45ac3b3a85a3431df2b3b5`. Frontend de partida: `a6f06b24261991c44e95ddd5d60c93f6eb9f2229`. Node 24.19.0 en Windows.
 
 ## Pruebas automatizadas locales

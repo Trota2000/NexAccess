@@ -20,17 +20,15 @@ npm ci
 npx expo start --go --web --localhost --port 8091
 ```
 
-Terminal 2, desde la raíz del repositorio:
+Abrí **http://localhost:8091/login**. `metro.config.js` incorpora un proxy que reenvía `/api/v1/*` a `https://nexaccess.rattenkoenig.net` antes del fallback HTML de Expo Router. No hace falta otra terminal y el QR de Expo Go sigue disponible. El proxy no guarda ni registra contraseñas, tokens o claves de dispositivos; elimina cookies y X-DEVICE-KEY del reenvío.
 
-```powershell
-node integration/dev-gateway.cjs
-```
+Al actualizar desde la versión inicial de esta rama, detené Expo con Ctrl+C y volvé a iniciarlo: una recarga del navegador no carga la configuración nueva del servidor. El proxy se mantiene en `integration/metro-proxy.cjs`, con copias comprobadas en cada app.
 
-Abrí **http://localhost:8082**. El gateway entrega Expo y reenvía `/api/*` a `https://nexaccess.rattenkoenig.net`, de modo que el navegador usa un solo origen. Está limitado a loopback y no registra contraseñas, tokens ni claves de dispositivos. Expo sigue ejecutándose normalmente y el QR sigue disponible.
+El gateway independiente sigue siendo opcional. Para usarlo, ejecutá `node integration/dev-gateway.cjs` desde la raíz en otra terminal y abrí http://localhost:8082.
 
-Para cambiar de backend, configurá `API_ORIGIN` en la terminal del gateway. Solo admite HTTPS remoto y HTTP para localhost. Para cambiar el puerto de Expo, configurá `EXPO_ORIGIN=http://localhost:PUERTO`. El frontend acepta `EXPO_PUBLIC_API_URL=/api/v1` (predeterminado web) o una URL HTTPS terminada en `/api/v1`.
+Para cambiar de backend, configurá `API_ORIGIN` antes de iniciar Expo (o en la terminal del gateway si usás esa alternativa). Solo admite HTTPS remoto y HTTP para localhost. Para cambiar el puerto de Expo detrás del gateway opcional, configurá `EXPO_ORIGIN=http://localhost:PUERTO`. El frontend acepta `EXPO_PUBLIC_API_URL=/api/v1` (predeterminado web) o una URL HTTPS terminada en `/api/v1`.
 
-No abras la web directamente en 8091 para usar la API relativa: ese puerto corresponde a Metro, no al gateway. Usar directamente una API de otro origen requiere CORS en el backend; en la revisión, el preflight OPTIONS devolvió 405 sin `Access-Control-Allow-Origin`.
+La primera versión de esta rama necesitaba el gateway externo: al abrir 8091, Expo respondía HTML a las peticiones API y el login fallaba. Esto se corrigió incorporando el proxy al propio servidor de Expo. Usar una API de otro origen directamente desde el navegador sigue requiriendo CORS en el backend; el preflight OPTIONS devolvió 405 sin `Access-Control-Allow-Origin`.
 
 ## Ejecutar el móvil
 
@@ -40,7 +38,7 @@ npm ci
 npx expo start --go
 ```
 
-Escaneá el QR con Expo Go compatible con el SDK del proyecto. El móvil usa por defecto `https://nexaccess.rattenkoenig.net/api/v1`. Podés copiar `.env.example` a `.env` para cambiar esa URL pública. El navegador, incluso si se inicia desde `mobile/`, usa por defecto `/api/v1` y necesita un gateway igual al anterior (`EXPO_ORIGIN` debe apuntar al puerto de ese Metro).
+Escaneá el QR con Expo Go compatible con el SDK del proyecto. El móvil usa por defecto `https://nexaccess.rattenkoenig.net/api/v1`. Podés copiar `.env.example` a `.env` para cambiar esa URL pública. Al iniciar `mobile/` en navegador, `/api/v1` usa el proxy incluido en su configuración de Metro.
 
 No se almacenan JWT, contraseñas ni claves del dispositivo en AsyncStorage, localStorage, archivos ni parámetros de URL. La sesión vive en memoria, se elimina al recargar/salir y caduca según `expiresAt` o una respuesta 401. La API actual no ofrece refresh ni revocación explícita de sesión; cerrar el frontend elimina su copia del token.
 

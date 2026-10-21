@@ -11,7 +11,7 @@ Cada aplicación instala sus dependencias por separado; la raíz no requiere npm
 
 ## Ejecutar la web con el servicio publicado
 
-Terminal 1:
+En PowerShell:
 
 ```powershell
 git clone https://github.com/Trota2000/NexAccess.git
@@ -22,13 +22,9 @@ npm ci
 npm run web:api
 ```
 
-Terminal 2, dentro de `NexAccess/web`:
+Abrí **http://localhost:8091/login**. Expo incluye el proxy de `/api/v1`, por lo que este comando alcanza: no hace falta una segunda terminal. Al actualizar desde una versión anterior, detené Expo con Ctrl+C y volvé a iniciarlo para cargar `metro.config.js`.
 
-```powershell
-npm run api:gateway
-```
-
-Abrí **http://localhost:8082**. El gateway local permite usar la API publicada desde el navegador aunque el backend no tenga CORS. El login requiere una cuenta real de operador; no hay registro público ni cuenta real preconfigurada.
+El gateway separado `npm run api:gateway` en el puerto 8082 sigue disponible como alternativa. El login requiere una cuenta real de operador; no hay registro público ni cuenta real preconfigurada.
 
 ## Ejecutar el móvil
 
@@ -38,7 +34,7 @@ npm ci
 npx expo start --go
 ```
 
-Si estabas dentro de `web`, usá `cd ../mobile`. El teléfono debe poder alcanzar la API HTTPS y usar Expo Go compatible con SDK 57. Para probar `mobile/` en navegador: `npm run web:api` y el gateway igual que en web, ejecutando una plantilla por vez.
+Si estabas dentro de `web`, usá `cd ../mobile`. El teléfono debe poder alcanzar la API HTTPS y usar Expo Go compatible con SDK 57. Para probar `mobile/` en navegador: `npm run web:api`, ejecutando una plantilla por vez. El proxy también está incluido en su configuración de Metro.
 
 Las URLs públicas se configuran con `.env.example`. Nunca pongas contraseñas, tokens o claves del dispositivo en variables EXPO_PUBLIC: forman parte del bundle.
 
@@ -60,7 +56,7 @@ Las URLs públicas se configuran con `.env.example`. Nunca pongas contraseñas, 
 - [Verificación de la integración](docs/VERIFICACION_API.md).
 - [Colaboración](CONTRIBUTING.md).
 
-Health respondió, pero no hubo cuenta ni entorno de pruebas. Las escrituras se verificaron contra fixtures sintéticos locales, sin modificar producción. Health no comprueba PostgreSQL. Quedan pendientes aceptación autenticada real, hardware, Expo Go en dispositivo y despliegue del contenedor web.
+Se verificaron health, login real y consulta inicial de empleados desde el navegador. Las escrituras se probaron con fixtures sintéticos locales, sin modificar datos de negocio de producción. No existe un entorno de pruebas separado. Quedan pendientes aceptación de los CRUD con datos autorizados, hardware, Expo Go en dispositivo y despliegue del contenedor web.
 
 Autoservicio EMPLEADO, notificaciones y gestión de alertas no tienen endpoints en la API revisada y continúan solo en demo. La consistencia entre varios operadores/dispositivos requiere también transacciones, concurrencia e idempotencia del backend; el frontend por sí solo no puede garantizarla.
 

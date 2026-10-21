@@ -279,6 +279,12 @@ export class ApiClient {
         return text;
       }
       if (response.status === 204) return undefined;
+      if (contentType.toLowerCase().includes("text/html"))
+        throw new ApiError(
+          "La dirección de la API está devolviendo una página web. Reiniciá Expo para cargar el proxy actualizado o revisá la configuración del servidor.",
+          response.status,
+          "API_ROUTE_NOT_CONFIGURED",
+        );
       if (!data || typeof data !== "object")
         throw new ApiError(
           "La respuesta de la API no cumple el contrato JSON.",

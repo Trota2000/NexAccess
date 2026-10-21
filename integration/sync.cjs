@@ -21,6 +21,18 @@ for (const file of fs.readdirSync(path.join(__dirname, "source"))) {
     }
   }
 }
+for (const app of ["web", "mobile"]) {
+  const contents = fs.readFileSync(path.join(__dirname, "metro-proxy.cjs"));
+  const dest = path.join(root, app, "metro-proxy.cjs");
+  if (check) {
+    if (!fs.existsSync(dest) || !contents.equals(fs.readFileSync(dest))) {
+      console.error(
+        `Actualizar ${app}/metro-proxy.cjs con node integration/sync.cjs`,
+      );
+      failed = true;
+    }
+  } else fs.writeFileSync(dest, contents);
+}
 if (failed) process.exitCode = 1;
 else
   console.log(

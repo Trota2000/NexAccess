@@ -21,7 +21,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
         working-directory: ${{ matrix.app }}
       - run: node integration/sync.cjs --check
-      - run: node --test integration/tests/api.test.cjs
+      - run: node --test integration/tests/*.test.cjs
         if: matrix.app == 'web'
       - run: npm test
         working-directory: ${{ matrix.app }}

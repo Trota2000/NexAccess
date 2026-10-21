@@ -326,7 +326,7 @@ test("HTML and unsafe integer responses are rejected", async () => {
   );
   await assert.rejects(
     client.request("/employees"),
-    (e) => e.code === "CONTRACT_ERROR",
+    (e) => e.code === "API_ROUTE_NOT_CONFIGURED",
   );
   const c = await loggedIn(
     () =>
