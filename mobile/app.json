@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "NexAccess Mobile",
+    "slug": "nexaccess-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nexaccess-mobile",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nexaccess.mobile.demo"
+    },
+    "android": {
+      "package": "com.nexaccess.mobile.demo",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#DBEDE5"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-router", "expo-font"]
+  }
+}

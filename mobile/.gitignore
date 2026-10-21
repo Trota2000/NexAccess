@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+coverage/
+.jest-cache/
+.expo-cli-home/
+.npm-cache/
+.dotslash-cache/
+.env
+.env.*
+!.env.example

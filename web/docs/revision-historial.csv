@@ -1,0 +1,2 @@
+﻿"Registro","Empleado","ID empleado","ID credencial","Identificador enmascarado","Fecha y hora ISO","Área","Lector","Resultado","Motivo"
+"EV-0003","Lucía Fernández","EMP-003","CR-3","•••• •••• 1036","2026-10-14T09:42:00-03:00","Datacenter","Lector 03","RECHAZADO","Área no autorizada para el rol"

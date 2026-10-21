@@ -1,0 +1,61 @@
+import { StyleSheet } from "react-native";
+export const tokens = {
+  color: {
+    background: "#EFF3F0",
+    surface: "#FAFBF8",
+    ink: "#263F43",
+    muted: "#60767A",
+    line: "#D6E2DD",
+    primary: "#306B62",
+    soft: "#DBEDE5",
+    blue: "#E0ECF5",
+    violet: "#EAE5F2",
+    warning: "#F3E7D5",
+    danger: "#944F47",
+  },
+  radius: 20,
+  space: 16,
+};
+const c = tokens.color;
+export const s = StyleSheet.create({
+  page: { flex: 1, backgroundColor: c.background },
+  content: {
+    padding: 20,
+    gap: 18,
+    paddingBottom: 36,
+    width: "100%",
+    maxWidth: 680,
+    alignSelf: "center",
+  },
+  card: {
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.line,
+    gap: 10,
+  },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  wrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    alignItems: "center",
+  },
+  title: { color: c.ink, fontSize: 28, fontWeight: "700", letterSpacing: -0.7 },
+  h: { color: c.ink, fontSize: 18, fontWeight: "600" },
+  text: { color: c.ink, fontSize: 15, lineHeight: 23 },
+  muted: { color: c.muted, fontSize: 13, lineHeight: 20 },
+  input: {
+    borderWidth: 1,
+    borderColor: c.line,
+    backgroundColor: c.surface,
+    borderRadius: 13,
+    padding: 14,
+    color: c.ink,
+    minHeight: 48,
+    fontSize: 16,
+  },
+  error: { color: c.danger, fontSize: 14, lineHeight: 21 },
+  label: { color: c.muted, fontSize: 13, fontWeight: "600" },
+});
