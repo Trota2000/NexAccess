@@ -22,6 +22,10 @@ En un repositorio público cualquiera puede proponer cambios desde un fork. Para
 
 ## Comprobaciones
 
+Para cambios de integración, editá `integration/source/`, ejecutá `node integration/sync.cjs` desde la raíz y comprobá `node integration/sync.cjs --check`. Las copias en `web/src/api` y `mobile/src/api` permiten instalar cada Expo por separado. Con las dependencias web instaladas, ejecutá `node --test integration/tests/api.test.cjs`. No uses producción para probar escrituras o credenciales ficticias.
+
+La CI verifica ambas apps y exporta web, pero no despliega el backend. Antes de cambiar contratos, ejecutá `node integration/check-contract.cjs RUTA_BACKEND` contra una copia actual y revisá DTO y permisos. Un health válido no prueba que el despliegue coincida con esa versión.
+
 Dentro de cada plantilla afectada:
 
 ```powershell

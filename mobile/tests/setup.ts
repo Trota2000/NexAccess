@@ -4,6 +4,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 );
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
+  Link: require("react-native").Text,
 }));
 jest.mock("react-native-safe-area-context", () => {
   const { View } = require("react-native");

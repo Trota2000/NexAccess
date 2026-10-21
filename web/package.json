@@ -35,7 +35,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs",
+    "web:api": "expo start --go --web --localhost --port 8091",
+    "api:gateway": "node ../integration/dev-gateway.cjs"
   },
   "private": true
 }

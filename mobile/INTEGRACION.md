@@ -1,5 +1,7 @@
 # Referencias e integración futura
 
+> Documento histórico de la maqueta personal conservada en `/demo`. Para el espacio de operadores conectado, ver [INTEGRACION_API.md](../docs/INTEGRACION_API.md) y [los pendientes del sistema](../docs/PENDIENTES_SISTEMA.md).
+
 Se revisó [NexAccess_docs](https://github.com/juliobernal92/NexAccess_docs), su esquema `SQL/sql_inicial.sql`, y el [backend NexAccess](https://github.com/sof2702/NexAccess), commit `8b9f0ce122e269e7df9bc78a4405df4445d05f20`, consultado el 20/10/2026. Los clones de referencia se usaron solo para lectura.
 
 Fuentes del backend: `docs/SEGURIDAD.md`, `docs/MANUAL_USUARIO.md`, entidades/enumeraciones en `src/NexAccess.Domain`, `AttendanceService`, controladores y DTO. El backend distingue empleado (persona), usuario (cuenta del sistema) y rol de acceso físico. Las fechas y enumeraciones se transportan con sus contratos, no con los textos de pantalla.

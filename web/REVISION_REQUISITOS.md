@@ -1,5 +1,7 @@
 # Revisión del frontend web NexAccess
 
+> Esta revisión describe la maqueta conservada en `/demo`. La integración API posterior tiene [su propia guía](../docs/INTEGRACION_API.md), [verificación](../docs/VERIFICACION_API.md) y [pendientes](../docs/PENDIENTES_SISTEMA.md).
+
 Fecha: 20/10/2026. Proyecto revisado: `outputs/nexaccess`. Se preservaron sus rutas y funcionalidades y se mantuvo independiente de `outputs/nexaccess-mobile`.
 
 **Conclusión: cumple parcialmente el documento web y sirve como prototipo administrativo. No está todavía alineado para conectarse directamente con todos los contratos del backend.** La existencia de los once apartados no implica que cada detalle del documento original esté implementado.

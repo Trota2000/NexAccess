@@ -15,6 +15,7 @@ export default function Layout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Protected guard={!user}>
             <Stack.Screen name="login" />
+            <Stack.Screen name="demo" />
           </Stack.Protected>
           <Stack.Protected guard={!!user}>
             <Stack.Screen name="(app)" />

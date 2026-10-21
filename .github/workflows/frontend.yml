@@ -1,0 +1,40 @@
+name: Verificar frontend NexAccess
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: ${{ matrix.app }}
+      - run: node integration/sync.cjs --check
+      - run: node --test integration/tests/api.test.cjs
+        if: matrix.app == 'web'
+      - run: npm test
+        working-directory: ${{ matrix.app }}
+      - run: npm run typecheck
+        working-directory: ${{ matrix.app }}
+      - run: npm run lint
+        working-directory: ${{ matrix.app }}
+      - run: npx expo export --platform web
+        working-directory: ${{ matrix.app }}
+        env:
+          EXPO_NO_TELEMETRY: 1
+          EXPO_PUBLIC_API_URL: /api/v1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexaccess-${{ matrix.app }}-web
+          path: ${{ matrix.app }}/dist
