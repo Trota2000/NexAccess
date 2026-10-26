@@ -1,3 +1,5 @@
+> **Integración API (21/10/2026):** el inicio de sesión predeterminado usa la API real. La maqueta anterior se conserva en `/demo`. Para ejecutar con el servicio publicado, seguí la [guía vigente de integración](../docs/INTEGRACION_API.md); los datos y credenciales de demostración de este documento solo corresponden a `/demo`.
+
 # NexAccess Mobile
 
 Frontend móvil independiente con React Native, TypeScript, Expo SDK 57 y Expo Router. No reemplaza el portal anterior de `outputs/nexaccess`. No se modificaron los repositorios de referencia.

@@ -1,0 +1,267 @@
+[
+  {
+    "method": "GET",
+    "path": "/health",
+    "security": "public"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/login",
+    "security": "public"
+  },
+  {
+    "method": "GET",
+    "path": "/auth/me",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/users",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/users",
+    "security": "bearer"
+  },
+  {
+    "method": "PATCH",
+    "path": "/users/{id}/status",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/users/{id}/password",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/employees",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/employees",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/employees/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/employees/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PATCH",
+    "path": "/employees/{id}/status",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/employees/{id}/roles",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/employees/{id}/roles/{roleId}",
+    "security": "bearer"
+  },
+  {
+    "method": "DELETE",
+    "path": "/employees/{id}/roles/{roleId}",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/roles",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/roles",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/roles/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/roles/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/areas",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/areas",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/areas/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/areas/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/access-permissions",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/access-permissions",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/access-permissions/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/access-permissions/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PATCH",
+    "path": "/access-permissions/{id}/status",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/credentials",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/credentials",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/credentials/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PATCH",
+    "path": "/credentials/{id}/status",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/credentials/{id}/revoke",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/devices",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/devices",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/devices/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PUT",
+    "path": "/devices/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "PATCH",
+    "path": "/devices/{id}/status",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/devices/{id}/rotate-key",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/devices/{id}/events",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/devices/{codigo}/commands",
+    "security": "device"
+  },
+  {
+    "method": "POST",
+    "path": "/enrollments",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/enrollments/{id}",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/enrollments/{id}/cancel",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/enrollments/{id}/card",
+    "security": "device"
+  },
+  {
+    "method": "POST",
+    "path": "/access/verify",
+    "security": "device"
+  },
+  {
+    "method": "GET",
+    "path": "/access-events",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/access-events/export",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/attendance",
+    "security": "bearer"
+  },
+  {
+    "method": "POST",
+    "path": "/attendance",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/attendance/report",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/attendance/export",
+    "security": "bearer"
+  },
+  {
+    "method": "GET",
+    "path": "/audit",
+    "security": "bearer"
+  }
+]

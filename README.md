@@ -1,36 +1,32 @@
 # NexAccess
 
-Dos plantillas de frontend para el sistema NexAccess de control de accesos físicos y consulta de asistencia: un portal web administrativo y una aplicación móvil. Están construidas con React Native, TypeScript, Expo y Expo Router.
+Frontend web y móvil para control de accesos y asistencia, con React Native, TypeScript, Expo SDK 57 y Expo Router. El login predeterminado usa la API de [sof2702/NexAccess](https://github.com/sof2702/NexAccess). Las dos maquetas originales se conservan en `/demo`, con sus datos ficticios separados de la API.
 
-**Son prototipos independientes con datos ficticios.** No incluyen backend, autenticación real, PostgreSQL, integración ESP32, NFC real ni apertura de puertas. Las acciones son simulaciones locales.
-
-## Elegir una plantilla
-
-| Plantilla | Uso | Documentación |
+| Aplicación | Carpeta | Uso |
 |---|---|---|
-| [`web/`](web/) | Portal administrativo con menú lateral, empleados, credenciales, áreas, lectores, permisos, alertas, reportes y auditoría | [Instalación](web/README.md), [revisión de requisitos](web/REVISION_REQUISITOS.md) |
-| [`mobile/`](mobile/) | App para empleados, Seguridad, RRHH y Administración, con cinco pestañas, credencial visual, accesos, asistencia y notificaciones | [Instalación](mobile/README.md), [integración](mobile/INTEGRACION.md) |
+| Web | [`web/`](web/) | Empleados, credenciales, áreas, roles físicos, lectores, permisos, historial, asistencia, cuentas y auditoría |
+| Móvil | [`mobile/`](mobile/) | Espacio conectado adaptable y Expo Go; maqueta personal de cinco pestañas conservada en `/demo` |
 
-Cada carpeta tiene su propio `package.json` y `package-lock.json`. Instalá sus dependencias por separado. La carpeta raíz no requiere `npm install`.
+Cada aplicación instala sus dependencias por separado; la raíz no requiere npm install. Se verificó con Node 24.19.0.
 
-## Ejecutar el portal web
+## Ejecutar la web con el servicio publicado
 
-Requisitos: Git, Node.js con npm y un navegador. Se verificó con Node 24.19.0.
+En PowerShell:
 
 ```powershell
 git clone https://github.com/Trota2000/NexAccess.git
-cd NexAccess/web
+cd NexAccess
+git switch feature/integracion-api
+cd web
 npm ci
-npm run web
+npm run web:api
 ```
 
-Abrí la dirección local que muestre Expo. Credenciales ficticias: usuario `admin`, contraseña `NexAccess2026!`. No hay registro público. El portal actual usa una única cuenta de demostración administrativa.
+Abrí **http://localhost:8091/login**. Expo incluye el proxy de `/api/v1`, por lo que este comando alcanza: no hace falta una segunda terminal. Al actualizar desde una versión anterior, detené Expo con Ctrl+C y volvé a iniciarlo para cargar `metro.config.js`.
 
-![Portal web](web/docs/revision-historial-escritorio.png)
+El gateway separado `npm run api:gateway` en el puerto 8082 sigue disponible como alternativa. El login requiere una cuenta real de operador; no hay registro público ni cuenta real preconfigurada.
 
-## Ejecutar la aplicación móvil
-
-Desde otra terminal, en el repositorio clonado:
+## Ejecutar el móvil
 
 ```powershell
 cd mobile
@@ -38,32 +34,36 @@ npm ci
 npx expo start --go
 ```
 
-Si estás dentro de `web`, usá `cd ../mobile`. Escaneá el QR con Expo Go compatible con SDK 57 y usá la misma red que la computadora. Para probar en navegador: `npm run web`.
+Si estabas dentro de `web`, usá `cd ../mobile`. El teléfono debe poder alcanzar la API HTTPS y usar Expo Go compatible con SDK 57. Para probar `mobile/` en navegador: `npm run web:api`, ejecutando una plantilla por vez. El proxy también está incluido en su configuración de Metro.
 
-Seleccioná un perfil e ingresá su usuario; todos usan la contraseña ficticia `NexAccess2026!`:
+Las URLs públicas se configuran con `.env.example`. Nunca pongas contraseñas, tokens o claves del dispositivo en variables EXPO_PUBLIC: forman parte del bundle.
 
-| Perfil | Usuario |
-|---|---|
-| Empleado | `empleado` |
-| Seguridad | `seguridad` |
-| Recursos Humanos | `rrhh` |
-| Administrador | `admin` |
+## Integración incluida
 
-La sesión no se guarda. El móvil conserva únicamente datos ficticios y preferencias en el dispositivo; se pueden restablecer desde Perfil.
+- JWT en memoria, perfil comprobado con `/auth/me`, expiración/401 y cierre de sesión sin persistir secretos.
+- Formularios con DTO reales, confirmación antes de escribir y recarga del servidor al guardar.
+- Listas y selectores paginados, filtros compatibles y perfiles ADMIN/SEGURIDAD/RRHH separados de roles físicos.
+- Estados de credenciales del servidor, revocación definitiva, enrolamiento y claves transitorias de lectores.
+- Marcaciones manuales con motivo, reporte diario, CSV del backend y auditoría de solo lectura.
+- Proxy local, Docker/Nginx y CI de verificación sin despliegue automático a producción.
 
-## Verificación y límites
+![Historial conectado con datos sintéticos](docs/screenshots/api-historial-escritorio.jpg)
 
-- **Web:** 32 pruebas aprobadas, TypeScript y ESLint sin errores, revisión en navegador de escritorio/teléfono y exportación CSV comprobada. [Detalle](web/VERIFICACION.md).
-- **Móvil:** 16 pruebas aprobadas, TypeScript y ESLint, Expo Doctor 21/21, exportaciones para web/Android/iOS y revisión visual web a tamaño de teléfono. [Detalle](mobile/VERIFICACION.md).
-- Se intentó Expo Go en Android, pero no había SDK, emulador ni dispositivo disponible. La ejecución nativa en hardware sigue pendiente; una exportación no sustituye esa prueba.
-- La web cumple parcialmente el documento original. La separación de cuentas administrativas, ciertos contratos y el módulo de asistencia web siguen pendientes. No se afirma que los prototipos estén listos para producción.
+## Documentación y límites
 
-Las guías conservan el contexto de las verificaciones realizadas antes de publicar este repositorio. Sus referencias a `outputs/nexaccess`, `outputs/nexaccess-mobile` o `work/` corresponden al entorno de desarrollo original; aquí las plantillas están en `web/` y `mobile/`.
+- [Endpoints, ejecución e integración](docs/INTEGRACION_API.md).
+- [Pendientes de backend, base de datos y despliegue](docs/PENDIENTES_SISTEMA.md).
+- [Verificación de la integración](docs/VERIFICACION_API.md).
+- [Colaboración](CONTRIBUTING.md).
 
-## Colaborar
+Se verificaron health, login real y consulta inicial de empleados desde el navegador. Las escrituras se probaron con fixtures sintéticos locales, sin modificar datos de negocio de producción. No existe un entorno de pruebas separado. Quedan pendientes aceptación de los CRUD con datos autorizados, hardware, Expo Go en dispositivo y despliegue del contenedor web.
 
-Consultá [CONTRIBUTING.md](CONTRIBUTING.md). El repositorio público permite consultar y clonar; los permisos de escritura se administran desde **Settings → Collaborators**. No se invita automáticamente a ninguna persona.
+Autoservicio EMPLEADO, notificaciones y gestión de alertas no tienen endpoints en la API revisada y continúan solo en demo. La consistencia entre varios operadores/dispositivos requiere también transacciones, concurrencia e idempotencia del backend; el frontend por sí solo no puede garantizarla.
 
-Las plantillas usan roles físicos y roles administrativos distintos. Leé la [comparación e integración](docs/COMPARACION.md) antes de compartir modelos o conectar endpoints.
+## Demostraciones originales
 
-Referencias del proyecto: [documentación NexAccess](https://github.com/juliobernal92/NexAccess_docs) y [backend NexAccess](https://github.com/sof2702/NexAccess). Este repositorio contiene únicamente estas dos plantillas de frontend.
+Elegí **Abrir demostración con datos ficticios** en el login. Web: `admin` / `NexAccess2026!`. Móvil: `empleado`, `seguridad`, `rrhh` o `admin`, misma contraseña de demo. Estas cuentas no se envían a la API real.
+
+Se conservan las [guías web anteriores](web/README.md), la [revisión de la maqueta](web/REVISION_REQUISITOS.md) y la [propuesta móvil](mobile/INTEGRACION.md). Sus rutas históricas outputs/ y work/ corresponden al entorno de desarrollo original.
+
+Documentación del proyecto: [juliobernal92/NexAccess_docs](https://github.com/juliobernal92/NexAccess_docs). No aplicar su SQL original sobre una base existente sin revisar las migraciones del backend.

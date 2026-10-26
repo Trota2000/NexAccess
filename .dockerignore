@@ -1,0 +1,8 @@
+**/node_modules
+**/.expo
+**/.env
+**/.env.*
+**/dist
+.git
+mobile
+integration/tests

@@ -1,5 +1,7 @@
 # Verificación de NexAccess
 
+> Evidencia histórica de la maqueta `/demo`. La integración con el backend se verifica por separado en [VERIFICACION_API.md](../docs/VERIFICACION_API.md).
+
 Fecha: 14 de octubre de 2026 (America/Asuncion).
 
 ## Ruta seguida

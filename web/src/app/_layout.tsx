@@ -21,7 +21,7 @@ export default function Layout() {
 function AuthenticatedRoutes() {
   const { session } = useSession();
   return <UsersProvider key={session?.username ?? 'signed-out'}><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-    <Stack.Protected guard={!session}><Stack.Screen name="login" /></Stack.Protected>
+    <Stack.Protected guard={!session}><Stack.Screen name="login" /><Stack.Screen name="demo" /></Stack.Protected>
     <Stack.Protected guard={!!session}><Stack.Screen name="(private)" /><Stack.Screen name="+not-found" /></Stack.Protected>
   </Stack></UsersProvider>;
 }

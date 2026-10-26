@@ -1,0 +1,85 @@
+# Verificación de la integración API
+
+## Corrección del login directo en Expo — 21/10/2026
+
+Se reprodujo el fallo reportado en `http://localhost:8091/login`: sin gateway, las rutas `/api/v1/*` caían en el fallback HTML de Expo Router. La comprobación inicial del endpoint con curl no había cubierto este recorrido del navegador.
+
+Se incorporó un proxy en la configuración de Metro de ambas apps para que el mismo puerto de Expo atienda la API. Se mantuvo el gateway externo como alternativa y se actualizó el mensaje cuando una ruta de API responde HTML.
+
+Se verificó el login completo en navegador a través de **8091**, con las credenciales reales facilitadas por el usuario: se abrió el panel `ADMIN`, terminó la carga del listado y no aparecieron errores de API. No se guardaron credenciales ni tokens ni se modificaron datos de negocio. Esto valida el login y la consulta inicial; no valida los CRUD de producción.
+
+Hay **29 pruebas de integración** aprobadas: las 25 originales y 4 nuevas de proxy que comprueban login/health antes del fallback HTML, propagación de errores JSON, 502 ante caída del upstream y rechazo de orígenes inválidos/bucles. Ejecutar `node --test integration/tests/*.test.cjs`. Se comprobaron TypeScript y ESLint de las dos apps.
+
+Para cargar la configuración nueva en otra copia, detener Expo y ejecutar `npm run web:api`; abrir **http://localhost:8091/login**. Ya no se necesita una segunda terminal.
+
+## Ampliación por módulos con OpenAPI
+
+Se contrastaron las **53 operaciones** del OpenAPI manual aportado por el usuario con el catálogo del cliente: 48 bearer, 2 públicas y 3 de dispositivo. El contrato manual tiene esquemas abiertos; los campos se verificaron además contra DTO/controladores del backend fijado. Esta comparación no demuestra que producción ejecute ese mismo commit.
+
+Se agregaron pruebas de cobertura de rutas/autenticación, bearer en todas las operaciones del operador, bloqueo previo al transporte por perfil, exclusión de operaciones de dispositivo, rechazo de campos ajenos, recibos sin secretos, respuestas ambiguas, enlaces contextuales y métricas con errores parciales. Las pruebas de pantalla incluyen alta de empleado con DTO exacto e ID del servidor, errores de validación visibles dentro del formulario, enrolamiento con empleado preseleccionado y bloqueo de escritura incierta con revisión explícita.
+
+Resultado local de esta ampliación: **35 pruebas de integración, 24 de móvil/interfaz y 32 de maqueta web aprobadas**. TypeScript de ambas aplicaciones sin errores. La app web se exportó correctamente (bundle 1,4 MB). Estos resultados reemplazan los conteos históricos de las secciones siguientes; no representan ejecución en un dispositivo físico.
+
+La comprobación manual usó Expo existente en 8091 y un gateway de pruebas en **8095** que dirige la API exclusivamente al fixture de loopback 9060. No se alteró la configuración del servicio público. Se verificaron alta y consulta del empleado sintético, enrolamiento preseleccionado, seguimiento y cancelación confirmada, Dashboard, navegación de reportes con rango precargado, incidencias rechazadas y comprobación de health + sesión. Se revisaron tamaños 390×844 y 1280×900. Las capturas contienen solo datos ficticios.
+
+![Dashboard con datos sintéticos, escritorio](screenshots/api-dashboard-escritorio.jpg)
+
+![Dashboard con datos sintéticos, tamaño de teléfono](screenshots/api-dashboard-movil.jpg)
+
+## Evidencia de la implementación inicial
+
+Fecha: 21/10/2026. Backend revisado: `81511f3e3680b3ef6c45ac3b3a85a3431df2b3b5`. Frontend de partida: `a6f06b24261991c44e95ddd5d60c93f6eb9f2229`. Node 24.19.0 en Windows.
+
+## Pruebas automatizadas locales
+
+| Comprobación | Resultado |
+|---|---|
+| Cliente y contratos (`node --test integration/tests/api.test.cjs`) | 25 pruebas aprobadas |
+| Maqueta web (`npm test` dentro de web) | 32 pruebas aprobadas |
+| Móvil, UI conectada y maqueta (`npm test` dentro de mobile) | 20 pruebas aprobadas |
+| TypeScript web y móvil (`npm run typecheck`) | Sin errores |
+| ESLint web y móvil, incluidas nuevas pruebas de pantalla | Sin errores |
+| Copias de código compartido (`node integration/sync.cjs --check`) | Idénticas |
+| Huellas del backend (`node integration/check-contract.cjs RUTA_BACKEND`) | Coinciden 171 archivos fuente del backend revisado |
+| Exportación web de la app web | Correcta, bundle de 1,3 MB |
+| Exportación de la app móvil para web, Android e iOS | Correcta: web 5,3 MB, Android Hermes 7,4 MB, iOS Hermes 7 MB; 52 assets |
+
+Los 25 casos de integración verifican IDs seguros, mapeo `codigo_credencial`, eliminación de campos ficticios, DTO de empleados/dispositivos, horarios nocturnos, permisos físicos frente a perfiles administrativos, fechas con zona, filtros/paginación, credenciales enmascaradas, `/auth/me`, rechazo de EMPLEADO como perfil del sistema, 401/409, CSV autenticado, JSON/HTML inválido, respuestas tardías después de logout, timeout sin reintento y bloqueo de reportes cuyo conteo supera 50.000 filas. Un caso usa HTTP real hacia un servidor sintético local; no ejecuta ASP.NET ni PostgreSQL.
+
+Las cuatro nuevas pruebas de pantalla verifican el login sin selector de privilegios, menú RRHH restringido, asignación de rol físico por Seguridad mediante `/employees/12/roles/7` sin cuerpo y rotación confirmada de clave con visualización temporal.
+
+## Verificación manual en navegador
+
+Se inició Expo con `start --go --web --localhost --port 8091`, se probó a través del gateway local y se usó exclusivamente `integration/fixture.cjs` para escrituras.
+
+1. Login sintético ADMIN: `/auth/login` seguido de `/auth/me` y lista de empleados del servidor.
+2. Paginación: 21 empleados, segunda página con un registro, contador total conservado.
+3. Búsqueda `Ana`: una coincidencia; la nueva consulta vuelve a la primera página.
+4. Alta de empleado ficticio `TEST-UI-2026`: revisión, confirmación, POST con los campos del DTO y recarga. El ID proviene del fixture, no de la UI.
+5. Historial filtrado con `RECHAZADO`, rango local 21/10/2026 y zona -03:00. La petición usa `from=2026-10-21T03:00:00.000Z` y `to=2026-10-22T02:59:59.000Z`.
+6. Descarga `nexaccess-access-events.csv`: se leyó el archivo descargado y contiene la fila sintética esperada. La petición export usa los filtros aplicados, sin page/pageSize y sin token en la URL.
+7. RRHH en viewport 390×844: solo Empleados, Áreas, Roles físicos y Asistencia; reporte diario con rango y marca incompleta del fixture. Escritorio revisado a 1280×900.
+8. `/demo` sigue mostrando el login de la maqueta original. La sesión conectada no se guarda.
+
+![Historial conectado, datos sintéticos](screenshots/api-historial-escritorio.jpg)
+
+![Asistencia conectada, viewport de teléfono y datos sintéticos](screenshots/api-asistencia-movil.jpg)
+
+## Servicio publicado: solo comprobaciones anónimas
+
+- `GET https://nexaccess.rattenkoenig.net/api/v1/health`: 200 y `{"status":"ok"}`.
+- La misma ruta a través del gateway local apuntando al servicio HTTPS: 200. En navegador, **Comprobar conexión** mostró **Servicio disponible**.
+- `OPTIONS /api/v1/auth/login` con Origin localhost, método POST y Content-Type: 405, sin cabecera CORS de autorización del origen.
+- `GET /openapi/v1.json`: 404. El contrato se revisó en el código fuente fijado por commit.
+
+No se intentaron credenciales ficticias ni se hicieron escrituras en el servicio publicado. El usuario confirmó que no existe entorno de pruebas. Un health estático no valida DB, cuentas, permisos ni operaciones de negocio.
+
+## Pendiente de verificación
+
+- Login, consultas y escrituras autenticadas contra la API ASP.NET desplegada, con cuenta y datos de prueba autorizados.
+- PostgreSQL real, migraciones y pruebas de concurrencia/idempotencia/rollback de auditoría.
+- Docker/Nginx y configuración del proxy/runner en el servidor. Docker y .NET no están disponibles en esta computadora; el código del backend no se modificó.
+- Ejecución nativa en Expo Go/dispositivo o simulador. Se inició Expo en modo Go; no hay dispositivo ni SDK Android disponible. No se creó un dev client ni se usó EAS.
+- Firmware ESP32, NFC y apertura de puertas; corresponden al servicio de dispositivos y al hardware.
+
+Los informes de las maquetas anteriores son históricos y no sustituyen esta verificación. Las exportaciones de JavaScript y los fixtures no prueban ejecución nativa ni equivalencia completa con la API/DB de producción.

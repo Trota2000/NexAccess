@@ -1,3 +1,5 @@
+> **Integración API (21/10/2026):** el inicio de sesión predeterminado usa la API real. La maqueta anterior se conserva en `/demo`. Para ejecutar con el servicio publicado, seguí la [guía vigente de integración](../docs/INTEGRACION_API.md); los datos y credenciales de demostración de este documento solo corresponden a `/demo`.
+
 # NexAccess · Frontend de administración
 
 Prototipo frontend del sistema de accesos RFID/NFC. React Native, Expo SDK 57 y Expo Router, con interfaz en español adaptable a escritorio, tablet y teléfono. Incluye los once apartados de navegación del ejemplo, manteniendo el login, el directorio y el historial anteriores.
