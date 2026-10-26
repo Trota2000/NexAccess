@@ -10,5 +10,5 @@ FROM nginx:stable-alpine
 RUN apk add --no-cache ca-certificates
 COPY --from=build /frontend/web/dist /usr/share/nginx/html
 COPY deploy/default.conf.template /etc/nginx/templates/default.conf.template
-ENV API_ORIGIN=https://nexaccess.rattenkoenig.net
+ENV API_ORIGIN=https://nx.rattenkoenig.net
 EXPOSE 80
