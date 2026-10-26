@@ -1,0 +1,99 @@
+name: Deploy NexAccess Web
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "web/**"
+      - "integration/**"
+      - "deploy/**"
+      - ".github/workflows/deploy-web.yml"
+      - ".dockerignore"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexaccess-web-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: trota2000/nexaccess-web
+
+jobs:
+  build:
+    name: Build and Push GHCR
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Verificar sincronización
+        run: node integration/sync.cjs --check
+
+      - name: Pruebas integración
+        run: node --test integration/tests/*.test.cjs
+
+      - name: TypeScript
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Tests
+        working-directory: web
+        run: npm test
+
+      - name: ESLint
+        working-directory: web
+        run: npm run lint
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./deploy/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+  deploy:
+    name: Deploy Rocky Linux
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, nexaccess-web]
+
+    steps:
+      - name: Desplegar frontend
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          sudo -n /usr/local/sbin/deploy-nexaccess-web "$IMAGE_TAG"
