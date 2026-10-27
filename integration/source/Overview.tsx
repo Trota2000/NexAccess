@@ -7,7 +7,13 @@ import {
   View,
 } from "react-native";
 import { ApiClient, Row, Session } from "./client";
-import { RefreshCw, ChevronRight } from "lucide-react-native";
+import {
+  RefreshCw,
+  ChevronRight,
+  SlidersHorizontal,
+  Check,
+  LucideIcon,
+} from "lucide-react-native";
 import CalendarField from "./CalendarField";
 import BusyOverlay from "./BusyOverlay";
 import MetricChart from "./MetricChart";
@@ -20,14 +26,28 @@ export const extraModules = [
   { key: "alertas", title: "Alertas" },
   { key: "configuracion", title: "Configuración" },
 ];
-function Action({ title, onPress }: { title: string; onPress: () => void }) {
+function Action({
+  title,
+  onPress,
+  compact = false,
+  icon,
+  expanded,
+}: {
+  title: string;
+  onPress: () => void;
+  compact?: boolean;
+  icon?: LucideIcon;
+  expanded?: boolean;
+}) {
+  const Icon = icon ?? (/actualizar/i.test(title) ? RefreshCw : ChevronRight);
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={s.button}>
-      {/actualizar/i.test(title) ? (
-        <RefreshCw size={17} color="#286c64" />
-      ) : (
-        <ChevronRight size={17} color="#286c64" />
-      )}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={expanded === undefined ? undefined : { expanded }}
+      onPress={onPress}
+      style={[s.button, compact && s.compactButton]}
+    >
+      <Icon size={17} color="#286c64" />
       <Text style={s.action}>{title}</Text>
     </Pressable>
   );
@@ -52,6 +72,7 @@ function Dashboard({
   );
   const [to, setTo] = useState(() => calendarInstant(localParts().day, "to"));
   const [rangeError, setRangeError] = useState("");
+  const [showPeriod, setShowPeriod] = useState(false);
   useEffect(() => {
     let current = true;
     loadMetrics(client, session.user.role, new Date(), range).then((result) => {
@@ -63,58 +84,82 @@ function Dashboard({
   }, [client, session.user.role, revision, range]);
   return (
     <>
-      <Text style={s.title}>Dashboard</Text>
-      <View style={s.card}>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-          <View style={{ flex: 1, minWidth: 200 }}>
-            <Text style={s.muted}>Desde</Text>
-            <CalendarField
-              label="Desde del dashboard"
-              value={from}
-              onChange={setFrom}
-              edge="from"
-            />
-          </View>
-          <View style={{ flex: 1, minWidth: 200 }}>
-            <Text style={s.muted}>Hasta</Text>
-            <CalendarField
-              label="Hasta del dashboard"
-              value={to}
-              onChange={setTo}
-              edge="to"
-            />
-          </View>
+      <View style={s.dashboardToolbar}>
+        <Text style={s.title}>Dashboard</Text>
+        <View style={s.toolbarActions}>
+          <Action
+            title="Actualizar"
+            compact
+            onPress={() => {
+              setMetrics(undefined);
+              setRevision((v) => v + 1);
+            }}
+          />
+          <Action
+            title={showPeriod ? "Ocultar período" : "Período"}
+            icon={SlidersHorizontal}
+            compact
+            expanded={showPeriod}
+            onPress={() => setShowPeriod((v) => !v)}
+          />
         </View>
-        <Action
-          title="Aplicar período"
-          onPress={() => {
-            if (!from || !to || Date.parse(from) > Date.parse(to)) {
-              setRangeError("Seleccioná un rango de fechas válido.");
-              return;
-            }
-            setRangeError("");
-            setMetrics(undefined);
-            setRange({ from, to });
-          }}
-        />
-        {!!rangeError && (
-          <Text accessibilityRole="alert" style={s.error}>
-            {rangeError}
-          </Text>
-        )}
-        <Text style={s.muted}>
-          Eventos y marcaciones:{" "}
-          {range ? "período seleccionado" : "últimas 24 horas"}. Los demás
-          indicadores muestran su estado actual.
-        </Text>
       </View>
-      <Action
-        title="Actualizar resumen"
-        onPress={() => {
-          setMetrics(undefined);
-          setRevision((v) => v + 1);
-        }}
-      />
+      {!!range && (
+        <Text style={s.periodCaption}>
+          Período aplicado:{" "}
+          {localParts(String(range.from)).day.split("-").reverse().join("/")} –{" "}
+          {localParts(String(range.to)).day.split("-").reverse().join("/")}
+        </Text>
+      )}
+      {showPeriod && (
+        <View style={s.periodPanel}>
+          <View style={s.periodFields}>
+            <View style={s.periodField}>
+              <Text style={s.muted}>Desde</Text>
+              <CalendarField
+                label="Desde del dashboard"
+                value={from}
+                onChange={setFrom}
+                edge="from"
+              />
+            </View>
+            <View style={s.periodField}>
+              <Text style={s.muted}>Hasta</Text>
+              <CalendarField
+                label="Hasta del dashboard"
+                value={to}
+                onChange={setTo}
+                edge="to"
+              />
+            </View>
+          </View>
+          <Action
+            title="Aplicar período"
+            icon={Check}
+            compact
+            onPress={() => {
+              if (!from || !to || Date.parse(from) > Date.parse(to)) {
+                setRangeError("Seleccioná un rango de fechas válido.");
+                return;
+              }
+              setRangeError("");
+              setMetrics(undefined);
+              setRange({ from, to });
+              setShowPeriod(false);
+            }}
+          />
+          {!!rangeError && (
+            <Text accessibilityRole="alert" style={s.error}>
+              {rangeError}
+            </Text>
+          )}
+          <Text style={s.muted}>
+            Eventos y marcaciones:{" "}
+            {range ? "período seleccionado" : "últimas 24 horas"}. Los demás
+            indicadores muestran su estado actual.
+          </Text>
+        </View>
+      )}
       <BusyOverlay active={!metrics} />
       {!!metrics && (
         <MetricChart
@@ -417,6 +462,35 @@ export default function Overview({
 }
 const s = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "700", color: "#263e45" },
+  dashboardToolbar: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  toolbarActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
+  compactButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  periodPanel: {
+    backgroundColor: "#f8faf8",
+    borderWidth: 1,
+    borderColor: "#cedcd7",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  periodFields: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  periodField: { flex: 1, minWidth: 190, maxWidth: 320, gap: 4 },
+  periodCaption: { fontSize: 13, color: "#586e74" },
   heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
   text: { fontSize: 15, lineHeight: 23, color: "#263e45" },
   muted: { fontSize: 14, lineHeight: 21, color: "#586e74" },
