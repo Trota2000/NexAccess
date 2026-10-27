@@ -116,38 +116,20 @@ function Dashboard({
         }}
       />
       <BusyOverlay active={!metrics} />
-      {!!metrics && <MetricChart metrics={metrics} />}
-      {!metrics ? (
-        <View style={{ minHeight: 48 }} />
-      ) : (
-        <View style={s.grid}>
-          {metrics.map((m) => (
-            <View key={m.label} style={s.card}>
-              <Text style={s.heading}>{m.label}</Text>
-              <Text style={s.number}>
-                {m.value === undefined ? "—" : m.value.toLocaleString("es-PY")}
-              </Text>
-              {m.error && (
-                <Text accessibilityRole="alert" style={s.error}>
-                  {m.error}
-                </Text>
-              )}
-              {m.hint && <Text style={s.muted}>{m.hint}</Text>}
-              <Action
-                title={`Consultar ${m.label.toLowerCase()}`}
-                onPress={() =>
-                  onOpen({
-                    title: m.label,
-                    key: m.key,
-                    query: m.query,
-                    label: m.label,
-                  })
-                }
-              />
-            </View>
-          ))}
-        </View>
+      {!!metrics && (
+        <MetricChart
+          metrics={metrics}
+          onConsult={(m) =>
+            onOpen({
+              title: m.label,
+              key: m.key,
+              query: m.query,
+              label: m.label,
+            })
+          }
+        />
       )}
+      {!metrics && <View style={{ minHeight: 48 }} />}
     </>
   );
 }
@@ -449,7 +431,6 @@ const s = StyleSheet.create({
     flexGrow: 1,
     minWidth: 240,
   },
-  number: { fontSize: 32, fontWeight: "700", color: "#286c64" },
   button: {
     flexDirection: "row",
     alignItems: "center",
