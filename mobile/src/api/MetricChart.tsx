@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Check, SlidersHorizontal } from "lucide-react-native";
+import { Check, ChevronRight, SlidersHorizontal } from "lucide-react-native";
 import { Metric } from "./workflows";
 const seriesKey = (m: Metric) => m.key + String(m.query.result ?? "");
 const palette = [
@@ -12,50 +12,23 @@ const palette = [
   "#a5b49c",
   "#c2b69a",
 ];
-export default function MetricChart({ metrics }: { metrics: Metric[] }) {
+export default function MetricChart({
+  metrics,
+  onConsult,
+}: {
+  metrics: Metric[];
+  onConsult?: (metric: Metric) => void;
+}) {
+  const [width, setWidth] = useState(0);
+  const columns = width >= 850 ? 3 : width >= 500 ? 2 : 1;
   const [hidden, setHidden] = useState<string[]>([]);
   const chosen = metrics.filter((m) => !hidden.includes(seriesKey(m)));
   const max = Math.max(1, ...chosen.map((m) => m.value ?? 0));
   return (
-    <View style={s.card}>
+    <View style={s.card} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       <View style={s.row}>
         <SlidersHorizontal size={18} color="#286c64" />
         <Text style={s.heading}>Comparar indicadores</Text>
-      </View>
-      <View style={s.row}>
-        {metrics.map((m, i) => (
-          <Pressable
-            key={m.label}
-            accessibilityRole="checkbox"
-            accessibilityLabel={`Mostrar ${m.label}`}
-            accessibilityState={{ checked: !hidden.includes(seriesKey(m)) }}
-            onPress={() =>
-              setHidden((list) =>
-                list.includes(seriesKey(m))
-                  ? list.filter((v) => v !== seriesKey(m))
-                  : [...list, seriesKey(m)],
-              )
-            }
-            style={s.check}
-          >
-            <View
-              style={[
-                s.box,
-                {
-                  borderColor: palette[i % palette.length],
-                  backgroundColor: hidden.includes(seriesKey(m))
-                    ? "transparent"
-                    : palette[i % palette.length],
-                },
-              ]}
-            >
-              {!hidden.includes(seriesKey(m)) && (
-                <Check size={13} color="#f8faf8" />
-              )}
-            </View>
-            <Text style={s.text}>{m.label}</Text>
-          </Pressable>
-        ))}
       </View>
       {!chosen.length ? (
         <Text style={s.text}>Seleccioná al menos un indicador.</Text>
@@ -129,6 +102,85 @@ export default function MetricChart({ metrics }: { metrics: Metric[] }) {
           </View>
         </ScrollView>
       )}
+      <View style={s.summary}>
+        {metrics.map((m, i) => (
+          <View
+            key={seriesKey(m)}
+            style={{
+              width: columns === 3 ? "33.333%" : columns === 2 ? "50%" : "100%",
+              padding: 5,
+            }}
+          >
+            <View style={s.indicator}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel={`Mostrar ${m.label}`}
+                accessibilityState={{ checked: !hidden.includes(seriesKey(m)) }}
+                onPress={() =>
+                  setHidden((list) =>
+                    list.includes(seriesKey(m))
+                      ? list.filter((v) => v !== seriesKey(m))
+                      : [...list, seriesKey(m)],
+                  )
+                }
+                style={s.check}
+              >
+                <View
+                  style={[
+                    s.box,
+                    {
+                      borderColor: palette[i % palette.length],
+                      backgroundColor: hidden.includes(seriesKey(m))
+                        ? "transparent"
+                        : palette[i % palette.length],
+                    },
+                  ]}
+                >
+                  {!hidden.includes(seriesKey(m)) && (
+                    <Check size={13} color="#f8faf8" />
+                  )}
+                </View>
+                <Text numberOfLines={2} style={s.indicatorLabel}>
+                  {m.label}
+                </Text>
+              </Pressable>
+              <View style={s.indicatorFooter}>
+                <Text
+                  accessibilityLabel={`Total ${m.label}: ${m.value ?? "no disponible"}`}
+                  style={s.total}
+                >
+                  {m.value === undefined
+                    ? "—"
+                    : m.value.toLocaleString("es-PY")}
+                </Text>
+                {!!onConsult && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Consultar ${m.label.toLowerCase()}`}
+                    onPress={() => onConsult(m)}
+                    style={s.consult}
+                  >
+                    <Text style={s.consultText}>Consultar</Text>
+                    <ChevronRight size={16} color="#286c64" />
+                  </Pressable>
+                )}
+              </View>
+              {!!m.error && (
+                <Text accessibilityRole="alert" style={s.error}>
+                  {m.error}
+                </Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+      {metrics
+        .filter((m) => m.hint)
+        .map((m) => (
+          <Text key={seriesKey(m)} style={s.text}>
+            {m.hint}
+          </Text>
+        ))}
       {chosen.some((m) => m.value === undefined) && (
         <Text style={s.text}>
           Los indicadores sin datos disponibles no se representan como cero.
@@ -154,7 +206,32 @@ const s = StyleSheet.create({
   },
   heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
   text: { fontSize: 13, color: "#586e74" },
-  check: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 36 },
+  summary: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5, justifyContent: "center" },
+  indicator: {
+    flex: 1,
+    backgroundColor: "#eef3f1",
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  indicatorLabel: { color: "#263e45", fontSize: 13, lineHeight: 18, flex: 1 },
+  indicatorFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  total: { fontSize: 24, fontWeight: "700", color: "#286c64" },
+  consult: {
+    flexDirection: "row",
+    gap: 4,
+    alignItems: "center",
+    minHeight: 40,
+    paddingHorizontal: 6,
+  },
+  consultText: { fontSize: 13, fontWeight: "600", color: "#286c64" },
+  error: { fontSize: 13, color: "#8e343c" },
+  check: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 42 },
   box: {
     width: 19,
     height: 19,

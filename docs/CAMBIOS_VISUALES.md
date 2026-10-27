@@ -49,3 +49,9 @@ Los logos definitivos están incorporados: versión completa en login y encabeza
 La revisión de los logos incluye autenticación y cierre de sesión con fixture, comprobación de conexión y capturas del login y del cargador. Dos pruebas adicionales verifican la recuperación del formulario tras credenciales rechazadas y una respuesta de salud válida.
 
 ![Login con el logo definitivo](screenshots/visual-login.jpg)
+
+## Resumen integrado del dashboard
+
+Se retiraron las tarjetas grandes que repetían los datos del gráfico. El mismo panel del gráfico contiene ahora una cuadrícula compacta de indicadores, con columnas del mismo ancho (tres, dos o una según el espacio disponible). Cada indicador conserva su total, casilla para mostrar/ocultar la barra y acceso Consultar con los filtros originales. Los errores y la aclaración de lectores se conservan; las casillas no ocultan los accesos de consulta. No cambia la API ni la selección de período.
+
+![Dashboard con indicadores integrados](screenshots/dashboard-integrado.jpg)
