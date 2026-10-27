@@ -1,9 +1,19 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  background: '#F3F5F2', surface: '#FAFBF8', sidebar: '#E9EEEA', text: '#293F46',
-  muted: '#65797D', line: '#DCE4DF', primary: '#356D6B', primarySoft: '#DDEEE7',
-  lavender: '#E8E6F3', blue: '#E1ECF3', peach: '#F4E9DD', danger: '#98534B', dangerSoft: '#F6E5DF',
+  "background": "var(--nx-bg)",
+  "surface": "var(--nx-card)",
+  "sidebar": "var(--nx-sidebar)",
+  "text": "var(--nx-ink)",
+  "muted": "var(--nx-muted)",
+  "line": "var(--nx-border)",
+  "primary": "var(--nx-primary)",
+  "primarySoft": "var(--nx-soft)",
+  "lavender": "var(--nx-raised)",
+  "blue": "var(--nx-infoBg)",
+  "peach": "var(--nx-warningBg)",
+  "danger": "var(--nx-error)",
+  "dangerSoft": "var(--nx-errorBg)"
 };
 export const ui = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },

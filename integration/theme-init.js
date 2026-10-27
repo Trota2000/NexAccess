@@ -1,0 +1,1 @@
+(function(){var saved=null;try{saved=localStorage.getItem('nexaccess.theme')}catch(e){}var mode=saved==='light'||saved==='dark'?saved:window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=mode;document.documentElement.style.colorScheme=mode})();

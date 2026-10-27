@@ -20,3 +20,19 @@ export const Plus = View,
 
 export const LogIn = View,
   Wifi = View;
+
+export const LayoutDashboard = View,
+  Users = View,
+  Cpu = View,
+  History = View,
+  CalendarCheck = View,
+  UserCog = View,
+  ClipboardList = View,
+  ContactRound = View,
+  ChartColumn = View,
+  Bell = View,
+  Settings = View,
+  MapPin = View,
+  Layers = View,
+  Moon = View,
+  Sun = View;

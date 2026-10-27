@@ -1,3 +1,10 @@
+import {
+  Colors,
+  spacing,
+  useDesign,
+  ThemeToggle,
+  useReducedMotion,
+} from "./Theme";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -29,6 +36,21 @@ import {
   LogIn,
   Wifi,
   LucideIcon,
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  Cpu,
+  ShieldCheck,
+  History,
+  CalendarCheck,
+  UserCog,
+  ClipboardList,
+  ContactRound,
+  ChartColumn,
+  Bell,
+  Settings,
+  MapPin,
+  Layers,
 } from "lucide-react-native";
 import CalendarField from "./CalendarField";
 import BusyOverlay from "./BusyOverlay";
@@ -56,6 +78,23 @@ import {
   resources,
 } from "./resources";
 
+const moduleIcons: Record<string, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  employees: Users,
+  credentials: CreditCard,
+  areas: MapPin,
+  roles: Layers,
+  devices: Cpu,
+  "access-permissions": ShieldCheck,
+  "access-events": History,
+  attendance: CalendarCheck,
+  users: UserCog,
+  audit: ClipboardList,
+  enrollments: ContactRound,
+  reportes: ChartColumn,
+  alertas: Bell,
+  configuracion: Settings,
+};
 const apiUrl =
   process.env.EXPO_PUBLIC_API_URL ||
   (Platform.OS === "web"
@@ -76,17 +115,6 @@ const reportColumns = [
   "totalMarks",
   "incomplete",
 ];
-const color = {
-  bg: "#eef3f1",
-  card: "#f8faf8",
-  ink: "#263e45",
-  muted: "#586e74",
-  primary: "#286c64",
-  soft: "#dcebe5",
-  border: "#cedcd7",
-  error: "#8e343c",
-  errorBg: "#f7e8e7",
-};
 function errorText(error: unknown): string {
   if (error instanceof ApiError)
     return [
@@ -114,6 +142,11 @@ function Button({
   secondary?: boolean;
   icon?: LucideIcon;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
+  const destructive = /revocar definitivamente|quitar rol|desactivar/i.test(
+    title,
+  );
   const Icon: LucideIcon =
     icon ??
     (/crear|nuevo|agregar|registrar|iniciar enrolamiento/i.test(title)
@@ -135,20 +168,40 @@ function Button({
                     : ChevronRight);
   return (
     <Pressable
+      testID={`nx-action-${title}`}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      aria-disabled={disabled}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         s.button,
         secondary ? s.secondary : s.primary,
+        destructive && {
+          backgroundColor: color.errorBg,
+          borderColor: color.error,
+        },
         (disabled || pressed) && { opacity: 0.55 },
       ]}
     >
-      <Icon size={18} color={secondary ? color.primary : "#f4faf7"} />
+      <Icon
+        size={18}
+        color={
+          destructive
+            ? color.error
+            : secondary
+              ? color.primary
+              : color.onPrimary
+        }
+      />
       <Text
         style={{
-          color: secondary ? color.primary : "#f4faf7",
+          color: destructive
+            ? color.error
+            : secondary
+              ? color.primary
+              : color.onPrimary,
+          flexShrink: 1,
           fontWeight: "600",
         }}
       >
@@ -158,6 +211,8 @@ function Button({
   );
 }
 function ErrorNotice({ message }: { message: string }) {
+  const { styles: s } = useDesign(makeStyles);
+
   return message ? (
     <Text accessibilityRole="alert" style={s.error}>
       {message}
@@ -168,32 +223,71 @@ function Sheet({
   title,
   children,
   onClose,
+  footer,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
+  footer?: React.ReactNode;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
+  const reduced = useReducedMotion();
+  const body = React.Children.toArray(children);
+  const actions: React.ReactNode[] = [];
+  while (
+    body.length &&
+    React.isValidElement(body[body.length - 1]) &&
+    (body[body.length - 1] as React.ReactElement).type === Button
+  )
+    actions.unshift(body.pop());
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+    <Modal
+      transparent
+      animationType={reduced ? "none" : "fade"}
+      visible
+      onRequestClose={onClose}
+    >
       <View style={s.overlay}>
-        <SafeAreaView style={s.sheet}>
-          <View style={s.row}>
-            <Text accessibilityRole="header" style={[s.title, { flex: 1 }]}>
+        <SafeAreaView
+          testID="nx-dialog"
+          role="dialog"
+          accessibilityLabel={title}
+          accessibilityViewIsModal
+          style={s.sheet}
+        >
+          <View style={s.sheetHeader}>
+            <Text accessibilityRole="header" style={[s.heading, { flex: 1 }]}>
               {title}
             </Text>
-            <Button title="Cerrar" secondary onPress={onClose} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              onPress={onClose}
+              style={s.closeButton}
+            >
+              <X size={20} color={color.muted} />
+            </Pressable>
           </View>
           <ScrollView
+            style={s.sheetBody}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ gap: 16, paddingBottom: 30 }}
+            contentContainerStyle={s.sheetContent}
           >
-            {children}
+            {body}
           </ScrollView>
+          {(footer || actions.length > 0) && (
+            <View testID="nx-dialog-footer" style={s.sheetFooter}>
+              {footer}
+              {actions}
+            </View>
+          )}
         </SafeAreaView>
       </View>
     </Modal>
   );
 }
+
 function titleOf(row: Row): string {
   return String(
     row.fullName ??
@@ -215,6 +309,8 @@ function Lookup({
   onSelect: (row: Row) => void;
   onClose: () => void;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const r = resource(resourceKey);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -317,6 +413,8 @@ function Input({
   client: ApiClient;
   filter?: boolean;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const [lookup, setLookup] = useState(false);
   const [caption, setCaption] = useState("");
   if (field.type === "boolean")
@@ -332,7 +430,7 @@ function Input({
       </View>
     );
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: spacing.sm }}>
       <Text style={s.label}>
         {field.label}
         {field.required && !filter ? " *" : ""}
@@ -341,7 +439,7 @@ function Input({
         style={{
           flexDirection: field.reference ? "row" : "column",
           alignItems: field.reference ? "flex-end" : undefined,
-          gap: 8,
+          gap: spacing.sm,
         }}
       >
         <View style={{ flex: 1 }}>
@@ -365,6 +463,7 @@ function Input({
                   key={v}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: String(value ?? "") === v }}
+                  aria-checked={String(value ?? "") === v}
                   onPress={() => onChange(v)}
                   style={[s.chip, String(value ?? "") === v && s.selected]}
                 >
@@ -439,6 +538,8 @@ function Pagination({
   onPage: (p: number) => void;
   disabled: boolean;
 }) {
+  const { styles: s } = useDesign(makeStyles);
+
   return (
     <View style={s.row}>
       <Button
@@ -487,6 +588,8 @@ function EditForm({
   serverError?: string;
   fieldErrors?: Record<string, string>;
 }) {
+  const { styles: s } = useDesign(makeStyles);
+
   const [draft, setDraft] = useState<Row>(() =>
     Object.fromEntries(
       form.fields
@@ -499,7 +602,23 @@ function EditForm({
   );
   const [error, setError] = useState("");
   return (
-    <Sheet title={form.title} onClose={onClose}>
+    <Sheet
+      title={form.title}
+      onClose={onClose}
+      footer={
+        <Button
+          title="Revisar cambios"
+          onPress={() => {
+            try {
+              setError("");
+              form.submit(bodyFor(form.fields, draft, form.edit));
+            } catch (e) {
+              setError(errorText(e));
+            }
+          }}
+        />
+      }
+    >
       <View style={s.formGrid}>
         {form.fields
           .filter((f) => !form.edit || !f.createOnly)
@@ -514,7 +633,12 @@ function EditForm({
                     ? "28%"
                     : f.type === "time"
                       ? "44%"
-                      : "100%",
+                      : (f.max && f.max > 255) ||
+                          ["reason", "note", "description"].includes(f.key)
+                        ? "100%"
+                        : "46%",
+                minWidth:
+                  f.type === "boolean" ? 100 : f.type === "time" ? 140 : 220,
               }}
             >
               <Input
@@ -535,29 +659,52 @@ function EditForm({
           ))}
       </View>
       <ErrorNotice message={error || serverError} />
-      <View style={[s.row, { justifyContent: "flex-end" }]}>
-        <Button
-          title="Revisar cambios"
-          onPress={() => {
-            try {
-              setError("");
-              form.submit(bodyFor(form.fields, draft, form.edit));
-            } catch (e) {
-              setError(errorText(e));
-            }
-          }}
-        />
-      </View>
     </Sheet>
   );
 }
+function statusStyle(key: string, value: unknown, color: Colors) {
+  if (key === "isActive" && typeof value === "boolean")
+    return {
+      color: value ? color.success : color.muted,
+      backgroundColor: value ? color.successBg : color.raised,
+    };
+  if (key === "result" && value === "AUTORIZADO")
+    return { color: color.success, backgroundColor: color.successBg };
+  if (key === "result" && value === "RECHAZADO")
+    return { color: color.error, backgroundColor: color.errorBg };
+  if (key === "status" && value === "COMPLETADO")
+    return { color: color.success, backgroundColor: color.successBg };
+  if (
+    key === "status" &&
+    ["PENDIENTE", "EXPIRADO", "CANCELADO"].includes(String(value))
+  )
+    return { color: color.warning, backgroundColor: color.warningBg };
+  return undefined;
+}
 function Details({ row, columns }: { row: Row; columns: string[] }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   return (
-    <View style={{ gap: 10 }}>
+    <View style={s.detailsGrid}>
       {columns.map((key) => (
-        <View key={key} style={{ gap: 2 }}>
+        <View
+          key={key}
+          style={[
+            s.detailCell,
+            typeof row[key] === "object" && row[key] !== null && s.detailWide,
+          ]}
+        >
           <Text style={s.muted}>{labels[key] ?? key}</Text>
-          <Text selectable style={s.text}>
+          <Text
+            selectable
+            style={[
+              s.detailValue,
+              typeof row[key] === "object" &&
+                row[key] !== null &&
+                s.technicalValue,
+              statusStyle(key, row[key], color),
+            ]}
+          >
             {display(key, row[key])}
           </Text>
         </View>
@@ -574,6 +721,8 @@ function Workspace({
   session: Session;
   onLogout: () => void;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const available = resources.filter((r) => r.read.includes(session.user.role));
   const supplements = extraModules.filter(
     (m) =>
@@ -959,6 +1108,7 @@ function Workspace({
             style={s.headerLogo}
           />
         </View>
+        <ThemeToggle />
         <Button title="Cerrar sesión" secondary onPress={onLogout} />
       </View>
       <View
@@ -967,23 +1117,47 @@ function Workspace({
         <View style={width >= 1000 ? s.sidebar : s.nav}>
           <ScrollView
             horizontal={width < 1000}
-            contentContainerStyle={{ gap: 8, padding: 12 }}
+            contentContainerStyle={{ gap: spacing.sm, padding: spacing.md }}
           >
-            {navigation.map((module) => (
-              <Pressable
-                key={module.key}
-                disabled={writing}
-                accessibilityRole="button"
-                accessibilityState={{
-                  selected: key === module.key,
-                  disabled: writing,
-                }}
-                onPress={() => navigate(module.key)}
-                style={[s.chip, key === module.key && s.selected]}
-              >
-                <Text style={s.text}>{module.title}</Text>
-              </Pressable>
-            ))}
+            {navigation.map((module) => {
+              const NavIcon = moduleIcons[module.key] ?? Layers;
+              return (
+                <Pressable
+                  testID={`nx-nav-${module.key}`}
+                  aria-current={key === module.key ? "page" : undefined}
+                  aria-selected={key === module.key}
+                  aria-disabled={writing}
+                  key={module.key}
+                  disabled={writing}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: key === module.key,
+                    disabled: writing,
+                  }}
+                  onPress={() => navigate(module.key)}
+                  style={[s.navItem, key === module.key && s.navActive]}
+                >
+                  <NavIcon
+                    size={19}
+                    strokeWidth={1.8}
+                    color={
+                      key === module.key ? color.activeText : color.primary
+                    }
+                  />
+                  <Text
+                    style={[
+                      s.navLabel,
+                      key === module.key && {
+                        color: color.activeText,
+                        fontWeight: "600",
+                      },
+                    ]}
+                  >
+                    {module.title}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
         <ScrollView
@@ -1272,6 +1446,7 @@ function Workspace({
                     <Pressable
                       key={`${row.id ?? row.employeeId ?? index}-${row.date ?? ""}`}
                       accessibilityRole="button"
+                      testID="nx-record"
                       accessibilityLabel={`Ver detalle de ${titleOf(row)}`}
                       onPress={() => void openDetails(row)}
                       style={s.card}
@@ -1560,6 +1735,8 @@ function Workspace({
 }
 
 export default function ApiApp() {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const [client] = useState(() => {
     try {
       return new ApiClient(apiUrl);
@@ -1628,6 +1805,9 @@ export default function ApiApp() {
     return <Workspace client={client} session={session} onLogout={logout} />;
   return (
     <SafeAreaView style={s.root}>
+      <View style={s.loginTools}>
+        <ThemeToggle />
+      </View>
       <ScrollView
         contentContainerStyle={s.login}
         keyboardShouldPersistTaps="handled"
@@ -1726,142 +1906,232 @@ export default function ApiApp() {
     </SafeAreaView>
   );
 }
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
-  top: {
-    padding: 18,
-    gap: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: color.card,
-    borderBottomWidth: 1,
-    borderColor: color.border,
-  },
-  headerLogo: { width: 180, maxWidth: "100%", height: 64 },
-  loginLogo: { width: 300, maxWidth: "100%", height: 120, alignSelf: "center" },
-  title: { fontSize: 26, fontWeight: "700", color: color.ink },
-  heading: { fontSize: 18, fontWeight: "600", color: color.ink },
-  text: { fontSize: 15, lineHeight: 23, color: color.ink },
-  muted: { fontSize: 14, lineHeight: 21, color: color.muted },
-  label: { fontSize: 14, fontWeight: "600", color: color.ink },
-  content: {
-    padding: 20,
-    gap: 18,
-    width: "100%",
-    maxWidth: 1100,
-    alignSelf: "center",
-    paddingBottom: 60,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  card: {
-    backgroundColor: color.card,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: color.border,
-    gap: 12,
-  },
-  summary: { gap: 4 },
-  formGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    alignItems: "center",
-  },
-  button: {
-    flexDirection: "row",
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  primary: { backgroundColor: color.primary },
-  secondary: { backgroundColor: color.soft },
-  chip: {
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  selected: { backgroundColor: color.soft, borderColor: color.primary },
-  sidebar: {
-    width: 245,
-    backgroundColor: "#e6eeea",
-    borderRightWidth: 1,
-    borderColor: color.border,
-  },
-  nav: { maxHeight: 88, backgroundColor: "#e6eeea" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#a6bbb3",
-    backgroundColor: "#f5f8f5",
-    borderRadius: 10,
-    minHeight: 48,
-    padding: 12,
-    fontSize: 16,
-    color: color.ink,
-  },
-  error: {
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: color.errorBg,
-    color: color.error,
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  notice: {
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: color.soft,
-    color: color.primary,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(32,55,53,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 12,
-  },
-  sheet: {
-    backgroundColor: color.card,
-    borderRadius: 20,
-    padding: 20,
-    width: "100%",
-    maxWidth: 640,
-    maxHeight: "95%",
-    gap: 20,
-  },
-  secret: {
-    fontSize: 17,
-    color: color.ink,
-    backgroundColor: color.soft,
-    padding: 16,
-    borderRadius: 12,
-  },
-  login: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 22,
-  },
-  loginCard: {
-    width: "100%",
-    maxWidth: 460,
-    backgroundColor: color.card,
-    padding: 26,
-    borderRadius: 22,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-});
+function makeStyles(color: Colors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: color.bg },
+    top: {
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      gap: spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: color.card,
+      borderBottomWidth: 1,
+      borderColor: color.border,
+    },
+    headerLogo: {
+      width: 156,
+      maxWidth: "100%",
+      height: 48,
+      backgroundColor: color.logoSurface,
+      borderRadius: 8,
+    },
+    loginLogo: {
+      width: 260,
+      maxWidth: "100%",
+      height: 104,
+      alignSelf: "center",
+      backgroundColor: color.logoSurface,
+      borderRadius: 12,
+    },
+    title: { fontSize: 26, fontWeight: "700", color: color.ink },
+    heading: { fontSize: 18, fontWeight: "600", color: color.ink },
+    text: { fontSize: 15, lineHeight: 23, color: color.ink },
+    muted: { fontSize: 14, lineHeight: 21, color: color.muted },
+    label: { fontSize: 14, fontWeight: "600", color: color.ink },
+    content: {
+      padding: spacing.xl,
+      gap: spacing.lg,
+      width: "100%",
+      maxWidth: 1200,
+      alignSelf: "center",
+      paddingBottom: 60,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap",
+    },
+    card: {
+      backgroundColor: color.card,
+      padding: spacing.lg,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: color.border,
+      gap: spacing.md,
+    },
+    summary: { gap: spacing.sm, flexDirection: "row", flexWrap: "wrap" },
+    navItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      minHeight: 44,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: "transparent",
+    },
+    navLabel: { color: color.ink, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+    navActive: { backgroundColor: color.active, borderColor: color.active },
+    loginTools: { alignSelf: "flex-end", padding: spacing.lg },
+    sheetHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.lg,
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderColor: color.border,
+      flexShrink: 0,
+    },
+    closeButton: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 12,
+    },
+    sheetBody: { flexShrink: 1, minHeight: 0 },
+    sheetContent: { gap: spacing.lg, padding: 20 },
+    sheetFooter: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "flex-end",
+      gap: spacing.sm,
+      padding: spacing.lg,
+      borderTopWidth: 1,
+      borderColor: color.border,
+      flexShrink: 0,
+    },
+    detailsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
+    detailCell: {
+      flexBasis: "46%",
+      flexGrow: 1,
+      minWidth: 200,
+      gap: spacing.xs,
+      paddingBottom: spacing.md,
+      borderBottomWidth: 1,
+      borderColor: color.border,
+    },
+    detailWide: { flexBasis: "100%" },
+    detailValue: {
+      color: color.ink,
+      fontSize: 14,
+      lineHeight: 22,
+      fontWeight: "500",
+      alignSelf: "flex-start",
+      maxWidth: "100%",
+      paddingHorizontal: spacing.xs,
+      borderRadius: 4,
+    },
+    technicalValue: {
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 12,
+      lineHeight: 20,
+      backgroundColor: color.raised,
+      padding: spacing.md,
+      width: "100%",
+    },
+    formGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+      alignItems: "center",
+    },
+    button: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      gap: spacing.sm,
+      minHeight: 44,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    primary: { backgroundColor: color.primary },
+    secondary: { backgroundColor: color.soft },
+    chip: {
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 12,
+      padding: spacing.md,
+      minHeight: 44,
+      justifyContent: "center",
+    },
+    selected: { backgroundColor: color.soft, borderColor: color.primary },
+    sidebar: {
+      width: 260,
+      backgroundColor: color.sidebar,
+      borderRightWidth: 1,
+      borderColor: color.border,
+    },
+    nav: { maxHeight: 80, backgroundColor: color.sidebar },
+    input: {
+      borderWidth: 1,
+      borderColor: color.controlBorder,
+      backgroundColor: color.input,
+      borderRadius: 10,
+      minHeight: 48,
+      padding: spacing.md,
+      fontSize: 16,
+      color: color.ink,
+    },
+    error: {
+      padding: 14,
+      borderRadius: 10,
+      backgroundColor: color.errorBg,
+      color: color.error,
+      fontSize: 14,
+      lineHeight: 22,
+    },
+    notice: {
+      padding: 14,
+      borderRadius: 10,
+      backgroundColor: color.soft,
+      color: color.primary,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: color.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.md,
+    },
+    sheet: {
+      backgroundColor: color.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: color.border,
+      width: "100%",
+      maxWidth: 760,
+      maxHeight: "85%",
+      overflow: "hidden",
+    },
+    secret: {
+      fontSize: 17,
+      color: color.ink,
+      backgroundColor: color.soft,
+      padding: spacing.lg,
+      borderRadius: 12,
+    },
+    login: {
+      flexGrow: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 22,
+    },
+    loginCard: {
+      width: "100%",
+      maxWidth: 460,
+      backgroundColor: color.card,
+      padding: spacing.xl,
+      borderRadius: 16,
+      gap: spacing.lg,
+      borderWidth: 1,
+      borderColor: color.border,
+    },
+  });
+}

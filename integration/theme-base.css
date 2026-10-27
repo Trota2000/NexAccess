@@ -1,0 +1,18 @@
+/* Shared web interaction rules. Colors are generated from design-tokens.json. */
+html,body{margin:0;height:100%;background:var(--nx-bg);color:var(--nx-ink);color-scheme:light}
+html[data-theme="dark"]{color-scheme:dark}
+body{overflow:hidden}#root{display:flex;min-height:100%;height:100%;flex:1}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--nx-controlBorder) var(--nx-bg)}
+[role="button"],input,textarea,[role="checkbox"],[role="radio"]{transition:background-color 160ms ease,border-color 160ms ease,box-shadow 160ms ease}
+[role="button"]:focus-visible,[role="checkbox"]:focus-visible,[role="radio"]:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--nx-focus)!important;outline-offset:3px}
+input,textarea{caret-color:var(--nx-primary)}input::placeholder,textarea::placeholder{color:var(--nx-muted);opacity:1}
+[role="button"]:hover:not([aria-disabled="true"]){filter:brightness(.97)}
+[data-testid^="nx-nav-"]{border-color:transparent!important;background:transparent!important}
+[data-testid^="nx-nav-"]:hover:not([aria-disabled="true"]){background:var(--nx-hover)!important;filter:none}
+[data-testid^="nx-nav-"][aria-selected="true"],[data-testid^="nx-nav-"][aria-selected="true"]:hover{background:var(--nx-active)!important;border-color:var(--nx-active)!important}
+[data-testid^="nx-nav-"][aria-selected="true"] *{color:var(--nx-activeText)!important}
+[data-testid^="nx-nav-"][aria-disabled="true"]{opacity:.5}
+[data-testid="nx-record"]:hover{border-color:var(--nx-primary)!important;background:var(--nx-hover)!important;filter:none}
+[data-testid="nx-dialog"]{box-shadow:var(--nx-shadow)}
+[data-testid="nx-dialog-footer"]>[role="button"]{align-self:flex-start}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}}
