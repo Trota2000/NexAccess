@@ -67,3 +67,9 @@ El período queda plegado por defecto detrás del botón Período. Al desplegarl
 Cada indicador conserva su posición horizontal aunque se desmarquen otros. Se reserva su columna vacía y el ancho de las barras queda limitado a 56 px. El ancho del gráfico se calcula con todos los indicadores, por lo que tampoco cambia el desplazamiento horizontal en móvil. Se conserva el ajuste de escala vertical según los datos seleccionados, la paleta, las casillas, los valores no disponibles, el estado sin selección y las consultas.
 
 ![Una barra seleccionada mantiene su proporción](screenshots/dashboard-barra-fija.jpg)
+
+## Indicadores más pequeños
+
+Las tarjetas del gráfico usan una fila compacta: casilla y título a la izquierda, valor y Consultar a la derecha. Se reduce el espacio vertical y el tamaño del total, conservando texto legible y áreas de interacción de 44 px. Los errores siguen debajo para no superponer mensajes con los controles. No cambia el ancho fijo de las barras ni la lógica de consulta.
+
+![Indicadores compactos](screenshots/dashboard-tarjetas-pequenas.jpg)
