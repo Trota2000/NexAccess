@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -139,8 +140,8 @@ test("real login has no role selector or registration; obtains role from me", as
   expect(screen.queryByText("Perfil de demostración")).toBeNull();
   expect(screen.queryByText("Registrarse")).toBeNull();
   expect(
-    screen.getByText("test.operator · ADMIN · Datos del servidor"),
-  ).toBeTruthy();
+    screen.queryByText("test.operator · ADMIN · Datos del servidor"),
+  ).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(screen.getByLabelText("Contraseña").props.value).toBe("");
   expect(screen.queryByText("Ana Vera")).toBeNull();
@@ -277,10 +278,8 @@ test("an uncertain write stays blocked across navigation until the affected list
     }).props.accessibilityState.disabled,
   ).toBe(true);
   await fireEvent.press(screen.getByRole("button", { name: "Dashboard" }));
-  await screen.findByText("Empleados activos");
-  await fireEvent.press(
-    screen.getByRole("button", { name: /^Empleados$/ }),
-  );
+  await screen.findByRole("checkbox", { name: "Mostrar Empleados activos" });
+  await fireEvent.press(screen.getByRole("button", { name: /^Empleados$/ }));
   await screen.findByText("Ana Vera");
   expect(screen.queryByRole("button", { name: "Crear empleado" })).toBeNull();
   await fireEvent.press(
@@ -289,4 +288,59 @@ test("an uncertain write stays blocked across navigation until the affected list
     }),
   );
   expect(screen.getByRole("button", { name: "Crear empleado" })).toBeTruthy();
+});
+
+test("branded login shows a blocking loader and recovers after rejected credentials", async () => {
+  let finish!: (r: Response) => void;
+  global.fetch = jest.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render(<ApiApp />);
+  expect(screen.getByLabelText("NexAccess")).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText("Usuario"), "test.operator");
+  await fireEvent.changeText(
+    screen.getByLabelText("Contraseña"),
+    "LocalOnlyTesting!",
+  );
+  await fireEvent.press(screen.getByRole("button", { name: "Iniciar sesión" }));
+  expect(screen.getByLabelText("Cargando proceso")).toBeTruthy();
+  expect(screen.getByLabelText("Símbolo de NexAccess")).toBeTruthy();
+  await act(async () =>
+    finish(response({ detail: "Credenciales incorrectas" }, 401)),
+  );
+  await waitFor(() =>
+    expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+  );
+  expect(screen.getByText("Credenciales incorrectas")).toBeTruthy();
+  expect(screen.getByLabelText("Contraseña").props.value).toBe("");
+  expect(
+    screen.getByRole("button", { name: "Iniciar sesión" }).props
+      .accessibilityState.disabled,
+  ).toBe(false);
+});
+test("connection check uses the branded loader and restores the login", async () => {
+  let finish!: (r: Response) => void;
+  global.fetch = jest.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render(<ApiApp />);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Comprobar conexión" }),
+  );
+  expect(screen.getByLabelText("Cargando proceso")).toBeTruthy();
+  await act(async () => finish(response({ status: "ok" })));
+  await waitFor(() =>
+    expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+  );
+  expect(screen.getByText("Servicio disponible.")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Iniciar sesión" }).props
+      .accessibilityState.disabled,
+  ).toBe(false);
 });

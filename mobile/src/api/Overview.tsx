@@ -7,6 +7,11 @@ import {
   View,
 } from "react-native";
 import { ApiClient, Row, Session } from "./client";
+import { RefreshCw, ChevronRight } from "lucide-react-native";
+import CalendarField from "./CalendarField";
+import BusyOverlay from "./BusyOverlay";
+import MetricChart from "./MetricChart";
+import { calendarInstant, localParts } from "./dates";
 import { display, pageOf, resource } from "./resources";
 import { loadMetrics, Metric, RelatedFlow } from "./workflows";
 export const extraModules = [
@@ -18,6 +23,11 @@ export const extraModules = [
 function Action({ title, onPress }: { title: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={s.button}>
+      {/actualizar/i.test(title) ? (
+        <RefreshCw size={17} color="#286c64" />
+      ) : (
+        <ChevronRight size={17} color="#286c64" />
+      )}
       <Text style={s.action}>{title}</Text>
     </Pressable>
   );
@@ -33,23 +43,71 @@ function Dashboard({
 }) {
   const [metrics, setMetrics] = useState<Metric[]>();
   const [revision, setRevision] = useState(0);
+  const [range, setRange] = useState<Row>();
+  const [from, setFrom] = useState(() =>
+    calendarInstant(
+      localParts(new Date(Date.now() - 86400000).toISOString()).day,
+      "from",
+    ),
+  );
+  const [to, setTo] = useState(() => calendarInstant(localParts().day, "to"));
+  const [rangeError, setRangeError] = useState("");
   useEffect(() => {
     let current = true;
-    loadMetrics(client, session.user.role).then((result) => {
+    loadMetrics(client, session.user.role, new Date(), range).then((result) => {
       if (current) setMetrics(result);
     });
     return () => {
       current = false;
     };
-  }, [client, session.user.role, revision]);
+  }, [client, session.user.role, revision, range]);
   return (
     <>
       <Text style={s.title}>Dashboard</Text>
-      <Text style={s.text}>
-        Resumen del servidor según tu perfil. Los eventos y marcaciones
-        corresponden a las últimas 24 horas; los conteos incluyen todas las
-        páginas.
-      </Text>
+      <View style={s.card}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 200 }}>
+            <Text style={s.muted}>Desde</Text>
+            <CalendarField
+              label="Desde del dashboard"
+              value={from}
+              onChange={setFrom}
+              edge="from"
+            />
+          </View>
+          <View style={{ flex: 1, minWidth: 200 }}>
+            <Text style={s.muted}>Hasta</Text>
+            <CalendarField
+              label="Hasta del dashboard"
+              value={to}
+              onChange={setTo}
+              edge="to"
+            />
+          </View>
+        </View>
+        <Action
+          title="Aplicar período"
+          onPress={() => {
+            if (!from || !to || Date.parse(from) > Date.parse(to)) {
+              setRangeError("Seleccioná un rango de fechas válido.");
+              return;
+            }
+            setRangeError("");
+            setMetrics(undefined);
+            setRange({ from, to });
+          }}
+        />
+        {!!rangeError && (
+          <Text accessibilityRole="alert" style={s.error}>
+            {rangeError}
+          </Text>
+        )}
+        <Text style={s.muted}>
+          Eventos y marcaciones:{" "}
+          {range ? "período seleccionado" : "últimas 24 horas"}. Los demás
+          indicadores muestran su estado actual.
+        </Text>
+      </View>
       <Action
         title="Actualizar resumen"
         onPress={() => {
@@ -57,11 +115,10 @@ function Dashboard({
           setRevision((v) => v + 1);
         }}
       />
+      <BusyOverlay active={!metrics} />
+      {!!metrics && <MetricChart metrics={metrics} />}
       {!metrics ? (
-        <ActivityIndicator
-          accessibilityLabel="Cargando resumen"
-          color="#286c64"
-        />
+        <View style={{ minHeight: 48 }} />
       ) : (
         <View style={s.grid}>
           {metrics.map((m) => (
@@ -394,6 +451,9 @@ const s = StyleSheet.create({
   },
   number: { fontSize: 32, fontWeight: "700", color: "#286c64" },
   button: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     minHeight: 44,
     backgroundColor: "#dcebe5",
     padding: 12,

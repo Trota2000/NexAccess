@@ -179,8 +179,9 @@ export async function loadMetrics(
   client: ApiClient,
   role: SystemRole,
   now = new Date(),
+  selectedRange?: Row,
 ): Promise<Metric[]> {
-  const range = {
+  const range = selectedRange ?? {
     from: new Date(now.getTime() - 86400000).toISOString(),
     to: now.toISOString(),
   };
@@ -218,6 +219,7 @@ export async function loadMetrics(
   ];
   return Promise.all(
     specs.map(async (metric) => {
+      if (selectedRange) metric.label = metric.label.replace("24 h", "período");
       try {
         const r = resource(metric.key);
         const page = pageOf(

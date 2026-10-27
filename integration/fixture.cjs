@@ -1,7 +1,7 @@
 // Synthetic local fixture for UI smoke tests. NOT a backend implementation.
 // Binds only to loopback. No real people, device keys or production credentials.
 const http = require("node:http");
-const now = "2026-10-21T12:00:00Z";
+const now = "2026-10-26T12:00:00Z";
 const users = ["ADMIN", "SEGURIDAD", "RRHH"].map((role, i) => ({
   id: i + 1,
   username: `fixture.${role.toLowerCase()}`,
@@ -147,7 +147,10 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("cache-control", "no-store");
   const send = (body, status = 200) => {
     res.statusCode = status;
-    res.end(status === 204 ? "" : JSON.stringify(body));
+    setTimeout(
+      () => res.end(status === 204 ? "" : JSON.stringify(body)),
+      Number(process.env.FIXTURE_DELAY_MS || 0),
+    );
   };
   const fail = (status, detail) =>
     send({ status, detail, code: `FIXTURE_${status}` }, status);
@@ -234,9 +237,88 @@ const server = http.createServer(async (req, res) => {
       totalItems: 1,
       totalPages: 1,
     });
+  const matches = (row) =>
+    [...url.searchParams].every(([key, value]) => {
+      if (["page", "pageSize"].includes(key)) return true;
+      if (key === "from")
+        return (
+          !row.occurredAt || Date.parse(row.occurredAt) >= Date.parse(value)
+        );
+      if (key === "to")
+        return (
+          !row.occurredAt || Date.parse(row.occurredAt) <= Date.parse(value)
+        );
+      if (key === "search")
+        return Object.values(row).some((v) =>
+          String(v).toLowerCase().includes(value.toLowerCase()),
+        );
+      return String(row[key]) === value;
+    });
   if (idString === "export") {
+    const headers =
+      key === "attendance"
+        ? [
+            "id",
+            "empleado_id",
+            "empleado",
+            "tipo",
+            "fecha_hora_local",
+            "origen",
+            "dispositivo",
+            "observacion",
+          ]
+        : [
+            "id",
+            "fecha_hora_local",
+            "resultado",
+            "motivo",
+            "empleado_id",
+            "empleado",
+            "dispositivo",
+            "area",
+            "credencial",
+          ];
+    const escape = (value) =>
+      '"' + String(value ?? "").replace(/"/g, '""') + '"';
+    const local = (value) =>
+      new Date(Date.parse(value) - 3 * 3600000)
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
+    const rows = list
+      .filter(matches)
+      .map((r) =>
+        key === "attendance"
+          ? [
+              r.id,
+              r.employeeId,
+              r.employeeName,
+              r.type,
+              local(r.occurredAt),
+              r.source,
+              r.deviceCode,
+              r.note,
+            ]
+          : [
+              r.id,
+              local(r.occurredAt),
+              r.result,
+              r.reason,
+              r.employeeId,
+              r.employeeName,
+              r.deviceCode,
+              r.areaName,
+              r.maskedCredential,
+            ],
+      );
     res.setHeader("content-type", "text/csv;charset=utf-8");
-    res.end("\uFEFFid;empleado;resultado\n8;Ana Vera;RECHAZADO\n");
+    res.end(
+      "\uFEFF" +
+        [headers, ...rows]
+          .map((row) => row.map(escape).join(","))
+          .join("\r\n") +
+        "\r\n",
+    );
     return;
   }
   if (key === "attendance" && idString === "report")
