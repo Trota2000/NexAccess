@@ -17,3 +17,6 @@ export const Plus = View,
   LogOut = View,
   CalendarDays = View,
   ChevronLeft = View;
+
+export const LogIn = View,
+  Wifi = View;

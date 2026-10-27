@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -287,4 +288,59 @@ test("an uncertain write stays blocked across navigation until the affected list
     }),
   );
   expect(screen.getByRole("button", { name: "Crear empleado" })).toBeTruthy();
+});
+
+test("branded login shows a blocking loader and recovers after rejected credentials", async () => {
+  let finish!: (r: Response) => void;
+  global.fetch = jest.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render(<ApiApp />);
+  expect(screen.getByLabelText("NexAccess")).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText("Usuario"), "test.operator");
+  await fireEvent.changeText(
+    screen.getByLabelText("Contraseña"),
+    "LocalOnlyTesting!",
+  );
+  await fireEvent.press(screen.getByRole("button", { name: "Iniciar sesión" }));
+  expect(screen.getByLabelText("Cargando proceso")).toBeTruthy();
+  expect(screen.getByLabelText("Símbolo de NexAccess")).toBeTruthy();
+  await act(async () =>
+    finish(response({ detail: "Credenciales incorrectas" }, 401)),
+  );
+  await waitFor(() =>
+    expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+  );
+  expect(screen.getByText("Credenciales incorrectas")).toBeTruthy();
+  expect(screen.getByLabelText("Contraseña").props.value).toBe("");
+  expect(
+    screen.getByRole("button", { name: "Iniciar sesión" }).props
+      .accessibilityState.disabled,
+  ).toBe(false);
+});
+test("connection check uses the branded loader and restores the login", async () => {
+  let finish!: (r: Response) => void;
+  global.fetch = jest.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render(<ApiApp />);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Comprobar conexión" }),
+  );
+  expect(screen.getByLabelText("Cargando proceso")).toBeTruthy();
+  await act(async () => finish(response({ status: "ok" })));
+  await waitFor(() =>
+    expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+  );
+  expect(screen.getByText("Servicio disponible.")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Iniciar sesión" }).props
+      .accessibilityState.disabled,
+  ).toBe(false);
 });

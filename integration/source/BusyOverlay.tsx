@@ -2,14 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  ImageSourcePropType,
   Modal,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
-// Replace only this source when the user supplies the approved logo asset.
-export const loadingLogo: ImageSourcePropType | undefined = undefined;
+const loadingLogo = require("../../assets/brand/nexaccess-symbol.png");
 export default function BusyOverlay({ active }: { active: boolean }) {
   const [visible, setVisible] = useState(active);
   const started = useRef(0);
@@ -44,15 +41,12 @@ export default function BusyOverlay({ active }: { active: boolean }) {
         <View style={s.center}>
           <ActivityIndicator size={84} color="#286c64" />
           <View pointerEvents="none" style={s.logo}>
-            {loadingLogo ? (
-              <Image
-                source={loadingLogo}
-                resizeMode="contain"
-                style={{ width: 40, height: 40 }}
-              />
-            ) : (
-              <Text style={s.brand}>NX</Text>
-            )}
+            <Image
+              source={loadingLogo}
+              resizeMode="contain"
+              accessibilityLabel="Símbolo de NexAccess"
+              style={{ width: 126, height: 50 }}
+            />
           </View>
         </View>
       </View>
@@ -81,5 +75,4 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  brand: { fontSize: 20, fontWeight: "800", color: "#286c64" },
 });

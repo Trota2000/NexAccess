@@ -4,7 +4,7 @@ Se mantienen Expo Router, la navegación, la paleta, el login y las operaciones 
 
 ## Cambios
 
-- Indicador centrado con marca estática y anillo giratorio verde; capa de fondo de opacidad 0,22. Se muestra durante navegación, filtros, apertura de formularios y operaciones. El logo definitivo está pendiente de que Diego adjunte el archivo; mientras tanto aparece una marca provisional NX y `BusyOverlay.tsx` concentra su reemplazo.
+- Indicador centrado con marca estática y anillo giratorio verde; capa de fondo de opacidad 0,22. Se muestra durante navegación, filtros, apertura de formularios y operaciones. Se usa el símbolo original adjunto, estático dentro del anillo. Los PNG transparentes se conservan sin alteraciones y se sincronizan entre ambas apps.
 - Iconos Lucide para React Native, compatibles con la web de Expo; texto e icono en acciones como crear, actualizar y filtros.
 - Dashboard con gráfico de barras y valores superpuestos, casillas para elegir indicadores y período de consulta mediante calendario. Empleados/áreas/lectores/permisos siguen representando estado actual: esos endpoints no tienen filtro de fecha. Solo eventos y marcaciones reciben el período. Los indicadores fallidos no se muestran como cero.
 - Selectores de referencias al lado del campo; días y horarios agrupados; acciones de formulario compactas. Se retiraron los subtítulos de formulario, encabezado de sesión y módulos, sin cambiar las validaciones.
@@ -32,14 +32,20 @@ El HTML del reporte escapa contenido del servidor, conserva acentos, comillas y 
 
 El despliegue público no se actualiza hasta revisar y fusionar la rama de cambios visuales. El backend, PostgreSQL, Docker y el workflow de despliegue permanecen sin cambios.
 
-Resultado local: 40 pruebas de integración, 29 pruebas de móvil/interfaz y 32 de maqueta web aprobadas (101 en total). TypeScript y ESLint sin errores en ambas apps. Expo exportó correctamente la web. Se excluyó `dist` del análisis de TypeScript para no revisar los bundles JavaScript generados, conservando las exclusiones de configuración y proyectos nativos.
+Resultado local: 40 pruebas de integración, 31 pruebas de móvil/interfaz y 32 de maqueta web aprobadas (103 en total). TypeScript y ESLint sin errores en ambas apps. Expo exportó correctamente la web. Se excluyó `dist` del análisis de TypeScript para no revisar los bundles JavaScript generados, conservando las exclusiones de configuración y proyectos nativos.
 
 En navegador se verificaron también la selección de indicadores, su cambio de escala, la actualización del período y el calendario en 390×844. El entorno de navegador mostró el documento HTML del PDF preparado con su fila sintética y el rango correcto; no se guardó un archivo PDF desde ese navegador de pruebas. El guardado final depende del diálogo de impresión del navegador normal.
 
-![Indicador de carga provisional](screenshots/visual-carga.jpg)
+![Indicador de carga](screenshots/visual-carga.jpg)
 
 ![Dashboard con período y selección de indicadores](screenshots/visual-dashboard.jpg)
 
 ![Calendario en tamaño de teléfono](screenshots/visual-calendario-movil.jpg)
 
 ![Formulario con referencias, horarios y días compactos](screenshots/visual-formulario.jpg)
+
+Los logos definitivos están incorporados: versión completa en login y encabezado, símbolo en el cargador. El login usa el mismo fondo de carga durante autenticación y comprobación de conexión, botones Lucide y no ofrece registro. Se retiró su subtítulo introductorio, conservando la ayuda de acceso y los errores.
+
+La revisión de los logos incluye autenticación y cierre de sesión con fixture, comprobación de conexión y capturas del login y del cargador. Dos pruebas adicionales verifican la recuperación del formulario tras credenciales rechazadas y una respuesta de salud válida.
+
+![Login con el logo definitivo](screenshots/visual-login.jpg)

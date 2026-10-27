@@ -33,6 +33,23 @@ for (const app of ["web", "mobile"]) {
     }
   } else fs.writeFileSync(dest, contents);
 }
+for (const file of ["nexaccess-logo.png", "nexaccess-symbol.png"]) {
+  const contents = fs.readFileSync(path.join(__dirname, "assets", file));
+  for (const app of ["web", "mobile"]) {
+    const dest = path.join(root, app, "assets", "brand", file);
+    if (check) {
+      if (!fs.existsSync(dest) || !contents.equals(fs.readFileSync(dest))) {
+        console.error(
+          `Actualizar ${app}/assets/brand/${file} con node integration/sync.cjs`,
+        );
+        failed = true;
+      }
+    } else {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, contents);
+    }
+  }
+}
 if (failed) process.exitCode = 1;
 else
   console.log(

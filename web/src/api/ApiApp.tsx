@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -25,6 +26,8 @@ import {
   X,
   Check,
   LogOut,
+  LogIn,
+  Wifi,
   LucideIcon,
 } from "lucide-react-native";
 import CalendarField from "./CalendarField";
@@ -949,7 +952,12 @@ function Workspace({
     <SafeAreaView style={s.root}>
       <View style={s.top}>
         <View style={{ flex: 1 }}>
-          <Text style={s.brand}>NexAccess</Text>
+          <Image
+            source={require("../../assets/brand/nexaccess-logo.png")}
+            accessibilityLabel="NexAccess"
+            resizeMode="contain"
+            style={s.headerLogo}
+          />
         </View>
         <Button title="Cerrar sesión" secondary onPress={onLogout} />
       </View>
@@ -1563,6 +1571,7 @@ export default function ApiApp() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [health, setHealth] = useState("");
   const lock = useRef(false);
@@ -1596,7 +1605,7 @@ export default function ApiApp() {
     return () => clearTimeout(timer);
   }, [client, session]);
   async function login() {
-    if (!client || lock.current) return;
+    if (!client || lock.current || checking) return;
     if (!username.trim() || !password) {
       setError("Ingresá tu usuario y contraseña.");
       return;
@@ -1624,12 +1633,14 @@ export default function ApiApp() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={s.loginCard}>
-          <Text style={s.brand}>NexAccess</Text>
+          <Image
+            source={require("../../assets/brand/nexaccess-logo.png")}
+            accessibilityLabel="NexAccess"
+            resizeMode="contain"
+            style={s.loginLogo}
+          />
           <Text accessibilityRole="header" style={s.title}>
             Bienvenido de nuevo
-          </Text>
-          <Text style={s.muted}>
-            Control de accesos y asistencia. Ingresá con tu cuenta de operador.
           </Text>
           <Text style={s.label}>Usuario</Text>
           <TextInput
@@ -1641,7 +1652,7 @@ export default function ApiApp() {
             value={username}
             maxLength={100}
             onChangeText={setUsername}
-            editable={!busy}
+            editable={!busy && !checking}
           />
           <Text style={s.label}>Contraseña</Text>
           <TextInput
@@ -1653,7 +1664,7 @@ export default function ApiApp() {
             value={password}
             maxLength={200}
             onChangeText={setPassword}
-            editable={!busy}
+            editable={!busy && !checking}
             onSubmitEditing={() => void login()}
           />
           <ErrorNotice
@@ -1663,15 +1674,10 @@ export default function ApiApp() {
                 : error
             }
           />
-          {busy && (
-            <ActivityIndicator
-              accessibilityLabel="Iniciando sesión"
-              color={color.primary}
-            />
-          )}
           <Button
             title={busy ? "Iniciando sesión…" : "Iniciar sesión"}
-            disabled={busy || !client}
+            icon={LogIn}
+            disabled={busy || checking || !client}
             onPress={() => void login()}
           />
           <Text style={s.muted}>
@@ -1680,9 +1686,11 @@ export default function ApiApp() {
           </Text>
           <Button
             title="Comprobar conexión"
+            icon={Wifi}
             secondary
-            disabled={busy || !client}
+            disabled={busy || checking || !client}
             onPress={() => {
+              setChecking(true);
               setHealth("Comprobando…");
               client
                 ?.request("/health", { anonymous: true })
@@ -1693,7 +1701,8 @@ export default function ApiApp() {
                       : "Respuesta de salud inesperada.",
                   ),
                 )
-                .catch((e) => setHealth(errorText(e)));
+                .catch((e) => setHealth(errorText(e)))
+                .finally(() => setChecking(false));
             }}
           />
           {!!health && (
@@ -1713,6 +1722,7 @@ export default function ApiApp() {
           </Link>
         </View>
       </ScrollView>
+      <BusyOverlay active={busy || checking} />
     </SafeAreaView>
   );
 }
@@ -1727,7 +1737,8 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: color.border,
   },
-  brand: { fontSize: 23, fontWeight: "800", color: color.primary },
+  headerLogo: { width: 180, maxWidth: "100%", height: 64 },
+  loginLogo: { width: 300, maxWidth: "100%", height: 120, alignSelf: "center" },
   title: { fontSize: 26, fontWeight: "700", color: color.ink },
   heading: { fontSize: 18, fontWeight: "600", color: color.ink },
   text: { fontSize: 15, lineHeight: 23, color: color.ink },
