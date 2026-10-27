@@ -116,58 +116,62 @@ export default function MetricChart({
             }}
           >
             <View style={s.indicator}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityLabel={`Mostrar ${m.label}`}
-                accessibilityState={{ checked: !hidden.includes(seriesKey(m)) }}
-                onPress={() =>
-                  setHidden((list) =>
-                    list.includes(seriesKey(m))
-                      ? list.filter((v) => v !== seriesKey(m))
-                      : [...list, seriesKey(m)],
-                  )
-                }
-                style={s.check}
-              >
-                <View
-                  style={[
-                    s.box,
-                    {
-                      borderColor: palette[i % palette.length],
-                      backgroundColor: hidden.includes(seriesKey(m))
-                        ? "transparent"
-                        : palette[i % palette.length],
-                    },
-                  ]}
+              <View style={s.indicatorBody}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`Mostrar ${m.label}`}
+                  accessibilityState={{
+                    checked: !hidden.includes(seriesKey(m)),
+                  }}
+                  onPress={() =>
+                    setHidden((list) =>
+                      list.includes(seriesKey(m))
+                        ? list.filter((v) => v !== seriesKey(m))
+                        : [...list, seriesKey(m)],
+                    )
+                  }
+                  style={s.check}
                 >
-                  {!hidden.includes(seriesKey(m)) && (
-                    <Check size={13} color="#f8faf8" />
+                  <View
+                    style={[
+                      s.box,
+                      {
+                        borderColor: palette[i % palette.length],
+                        backgroundColor: hidden.includes(seriesKey(m))
+                          ? "transparent"
+                          : palette[i % palette.length],
+                      },
+                    ]}
+                  >
+                    {!hidden.includes(seriesKey(m)) && (
+                      <Check size={13} color="#f8faf8" />
+                    )}
+                  </View>
+                  <Text numberOfLines={2} style={s.indicatorLabel}>
+                    {m.label}
+                  </Text>
+                </Pressable>
+                <View style={s.indicatorFooter}>
+                  <Text
+                    accessibilityLabel={`Total ${m.label}: ${m.value ?? "no disponible"}`}
+                    style={s.total}
+                  >
+                    {m.value === undefined
+                      ? "—"
+                      : m.value.toLocaleString("es-PY")}
+                  </Text>
+                  {!!onConsult && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Consultar ${m.label.toLowerCase()}`}
+                      onPress={() => onConsult(m)}
+                      style={s.consult}
+                    >
+                      <Text style={s.consultText}>Consultar</Text>
+                      <ChevronRight size={16} color="#286c64" />
+                    </Pressable>
                   )}
                 </View>
-                <Text numberOfLines={2} style={s.indicatorLabel}>
-                  {m.label}
-                </Text>
-              </Pressable>
-              <View style={s.indicatorFooter}>
-                <Text
-                  accessibilityLabel={`Total ${m.label}: ${m.value ?? "no disponible"}`}
-                  style={s.total}
-                >
-                  {m.value === undefined
-                    ? "—"
-                    : m.value.toLocaleString("es-PY")}
-                </Text>
-                {!!onConsult && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Consultar ${m.label.toLowerCase()}`}
-                    onPress={() => onConsult(m)}
-                    style={s.consult}
-                  >
-                    <Text style={s.consultText}>Consultar</Text>
-                    <ChevronRight size={16} color="#286c64" />
-                  </Pressable>
-                )}
               </View>
               {!!m.error && (
                 <Text accessibilityRole="alert" style={s.error}>
@@ -220,9 +224,11 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: "#eef3f1",
     borderRadius: 12,
-    padding: 12,
-    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 4,
   },
+  indicatorBody: { flexDirection: "row", alignItems: "center", gap: 8 },
   indicatorLabel: { color: "#263e45", fontSize: 13, lineHeight: 18, flex: 1 },
   indicatorFooter: {
     flexDirection: "row",
@@ -230,17 +236,23 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  total: { fontSize: 24, fontWeight: "700", color: "#286c64" },
+  total: { fontSize: 20, fontWeight: "700", color: "#286c64" },
   consult: {
     flexDirection: "row",
     gap: 4,
     alignItems: "center",
-    minHeight: 40,
-    paddingHorizontal: 6,
+    minHeight: 44,
+    paddingHorizontal: 4,
   },
-  consultText: { fontSize: 13, fontWeight: "600", color: "#286c64" },
+  consultText: { fontSize: 12, fontWeight: "600", color: "#286c64" },
   error: { fontSize: 13, color: "#8e343c" },
-  check: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 42 },
+  check: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    minHeight: 44,
+  },
   box: {
     width: 19,
     height: 19,
