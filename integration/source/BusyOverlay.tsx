@@ -1,0 +1,85 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ImageSourcePropType,
+  Modal,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+// Replace only this source when the user supplies the approved logo asset.
+export const loadingLogo: ImageSourcePropType | undefined = undefined;
+export default function BusyOverlay({ active }: { active: boolean }) {
+  const [visible, setVisible] = useState(active);
+  const started = useRef(0);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (active) {
+      started.current = Date.now();
+      timer = setTimeout(() => setVisible(true), 0);
+    } else
+      timer = setTimeout(
+        () => setVisible(false),
+        Math.max(0, 320 - (Date.now() - started.current)),
+      );
+    return () => clearTimeout(timer);
+  }, [active]);
+  if (!visible && !active) return null;
+  return (
+    <Modal
+      transparent
+      visible
+      animationType="fade"
+      onRequestClose={() => {}}
+      statusBarTranslucent
+    >
+      <View
+        accessibilityViewIsModal
+        accessibilityRole="progressbar"
+        accessibilityLabel="Cargando proceso"
+        accessibilityLiveRegion="polite"
+        style={s.overlay}
+      >
+        <View style={s.center}>
+          <ActivityIndicator size={84} color="#286c64" />
+          <View pointerEvents="none" style={s.logo}>
+            {loadingLogo ? (
+              <Image
+                source={loadingLogo}
+                resizeMode="contain"
+                style={{ width: 40, height: 40 }}
+              />
+            ) : (
+              <Text style={s.brand}>NX</Text>
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+const s = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(24,46,42,.22)",
+  },
+  center: {
+    width: 104,
+    height: 104,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 24,
+    backgroundColor: "#eef3f1",
+  },
+  logo: {
+    position: "absolute",
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brand: { fontSize: 20, fontWeight: "800", color: "#286c64" },
+});

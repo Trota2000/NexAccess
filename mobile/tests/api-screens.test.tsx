@@ -139,8 +139,8 @@ test("real login has no role selector or registration; obtains role from me", as
   expect(screen.queryByText("Perfil de demostración")).toBeNull();
   expect(screen.queryByText("Registrarse")).toBeNull();
   expect(
-    screen.getByText("test.operator · ADMIN · Datos del servidor"),
-  ).toBeTruthy();
+    screen.queryByText("test.operator · ADMIN · Datos del servidor"),
+  ).toBeNull();
   await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(screen.getByLabelText("Contraseña").props.value).toBe("");
   expect(screen.queryByText("Ana Vera")).toBeNull();
@@ -277,10 +277,8 @@ test("an uncertain write stays blocked across navigation until the affected list
     }).props.accessibilityState.disabled,
   ).toBe(true);
   await fireEvent.press(screen.getByRole("button", { name: "Dashboard" }));
-  await screen.findByText("Empleados activos");
-  await fireEvent.press(
-    screen.getByRole("button", { name: /^Empleados$/ }),
-  );
+  await screen.findByRole("checkbox", { name: "Mostrar Empleados activos" });
+  await fireEvent.press(screen.getByRole("button", { name: /^Empleados$/ }));
   await screen.findByText("Ana Vera");
   expect(screen.queryByRole("button", { name: "Crear empleado" })).toBeNull();
   await fireEvent.press(

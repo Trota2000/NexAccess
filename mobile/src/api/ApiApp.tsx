@@ -15,6 +15,21 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
+import {
+  Plus,
+  RefreshCw,
+  SlidersHorizontal,
+  FileDown,
+  Search,
+  ChevronRight,
+  X,
+  Check,
+  LogOut,
+  LucideIcon,
+} from "lucide-react-native";
+import CalendarField from "./CalendarField";
+import BusyOverlay from "./BusyOverlay";
+import { exportPdf } from "./pdf";
 import { ApiClient, ApiError, id, Page, Row, Session } from "./client";
 import Overview, { extraModules } from "./Overview";
 import {
@@ -88,12 +103,33 @@ function Button({
   onPress,
   disabled = false,
   secondary = false,
+  icon,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   secondary?: boolean;
+  icon?: LucideIcon;
 }) {
+  const Icon: LucideIcon =
+    icon ??
+    (/crear|nuevo|agregar|registrar|iniciar enrolamiento/i.test(title)
+      ? Plus
+      : /actualizar/i.test(title)
+        ? RefreshCw
+        : /filtro/i.test(title)
+          ? SlidersHorizontal
+          : /csv|pdf/i.test(title)
+            ? FileDown
+            : /cerrar sesión/i.test(title)
+              ? LogOut
+              : /cerrar|limpiar/i.test(title)
+                ? X
+                : /confirmar|guardar|revisar/i.test(title)
+                  ? Check
+                  : /seleccionar|buscar|consultar/i.test(title)
+                    ? Search
+                    : ChevronRight);
   return (
     <Pressable
       accessibilityRole="button"
@@ -106,6 +142,7 @@ function Button({
         (disabled || pressed) && { opacity: 0.55 },
       ]}
     >
+      <Icon size={18} color={secondary ? color.primary : "#f4faf7"} />
       <Text
         style={{
           color: secondary ? color.primary : "#f4faf7",
@@ -279,92 +316,114 @@ function Input({
 }) {
   const [lookup, setLookup] = useState(false);
   const [caption, setCaption] = useState("");
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={s.label}>
-        {field.label}
-        {field.required && !filter ? " *" : ""}
-      </Text>
-      {field.type === "boolean" ? (
+  if (field.type === "boolean")
+    return (
+      <View style={[s.row, { justifyContent: "space-between" }]}>
+        <Text style={s.label}>{field.label}</Text>
         <Switch
           accessibilityLabel={field.label}
           value={value === true}
           onValueChange={onChange}
           trackColor={{ true: color.primary }}
         />
-      ) : field.choices ? (
-        <View style={s.row}>
-          {[...(filter ? [""] : []), ...field.choices].map((v) => (
-            <Pressable
-              key={v}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: String(value ?? "") === v }}
-              onPress={() => onChange(v)}
-              style={[s.chip, String(value ?? "") === v && s.selected]}
-            >
-              <Text style={s.text}>
-                {v === ""
-                  ? "Todos"
-                  : v === "true"
-                    ? "Activo"
-                    : v === "false"
-                      ? "Inactivo"
-                      : v}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <TextInput
-          accessibilityLabel={field.label}
-          value={String(value ?? "")}
-          onChangeText={onChange}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry={field.type === "password"}
-          keyboardType={
-            field.type === "id"
-              ? "number-pad"
-              : field.key === "email"
-                ? "email-address"
-                : "default"
-          }
-          maxLength={field.type === "id" ? 16 : (field.max ?? 500)}
-          placeholder={
-            field.type === "datetime"
-              ? "2026-10-21T09:00:00-03:00"
-              : field.type === "time"
-                ? "08:00"
-                : undefined
-          }
-          style={s.input}
-        />
-      )}
-      {field.reference && (
-        <>
-          <Button
-            title={
-              caption
-                ? `Cambiar: ${caption}`
-                : `Seleccionar ${field.label.toLowerCase()}`
-            }
-            secondary
-            onPress={() => setLookup(true)}
-          />
-          {lookup && (
-            <Lookup
-              client={client}
-              resourceKey={field.reference}
-              onClose={() => setLookup(false)}
-              onSelect={(row) => {
-                onChange(row.id);
-                setCaption(titleOf(row));
-                setLookup(false);
-              }}
+      </View>
+    );
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={s.label}>
+        {field.label}
+        {field.required && !filter ? " *" : ""}
+      </Text>
+      <View
+        style={{
+          flexDirection: field.reference ? "row" : "column",
+          alignItems: field.reference ? "flex-end" : undefined,
+          gap: 8,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          {field.type === "datetime" ? (
+            <CalendarField
+              label={field.label}
+              value={value}
+              onChange={onChange}
+              edge={
+                field.key === "from"
+                  ? "from"
+                  : field.key === "to"
+                    ? "to"
+                    : "instant"
+              }
+            />
+          ) : field.choices ? (
+            <View style={s.row}>
+              {[...(filter ? [""] : []), ...field.choices].map((v) => (
+                <Pressable
+                  key={v}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: String(value ?? "") === v }}
+                  onPress={() => onChange(v)}
+                  style={[s.chip, String(value ?? "") === v && s.selected]}
+                >
+                  <Text style={s.text}>
+                    {v === ""
+                      ? "Todos"
+                      : v === "true"
+                        ? "Activo"
+                        : v === "false"
+                          ? "Inactivo"
+                          : v}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <TextInput
+              accessibilityLabel={field.label}
+              value={String(value ?? "")}
+              onChangeText={onChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry={field.type === "password"}
+              keyboardType={
+                field.type === "id"
+                  ? "number-pad"
+                  : field.key === "email"
+                    ? "email-address"
+                    : "default"
+              }
+              maxLength={field.type === "id" ? 16 : (field.max ?? 500)}
+              placeholder={field.type === "time" ? "08:00" : undefined}
+              style={s.input}
             />
           )}
-        </>
-      )}
+        </View>
+        {field.reference && (
+          <>
+            <Button
+              title={
+                caption
+                  ? `Cambiar: ${caption}`
+                  : `Seleccionar ${field.label.toLowerCase()}`
+              }
+              secondary
+              onPress={() => setLookup(true)}
+            />
+            {lookup && (
+              <Lookup
+                client={client}
+                resourceKey={field.reference}
+                onClose={() => setLookup(false)}
+                onSelect={(row) => {
+                  onChange(row.id);
+                  setCaption(titleOf(row));
+                  setLookup(false);
+                }}
+              />
+            )}
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -438,40 +497,54 @@ function EditForm({
   const [error, setError] = useState("");
   return (
     <Sheet title={form.title} onClose={onClose}>
-      <Text style={s.muted}>
-        Los campos con * son obligatorios. Revisá los cambios antes de
-        confirmarlos.
-      </Text>
-      {form.fields
-        .filter((f) => !form.edit || !f.createOnly)
-        .map((f) => (
-          <View key={f.key} style={{ gap: 6 }}>
-            <Input
+      <View style={s.formGrid}>
+        {form.fields
+          .filter((f) => !form.edit || !f.createOnly)
+          .map((f) => (
+            <View
               key={f.key}
-              field={f}
-              value={draft[f.key]}
-              client={client}
-              onChange={(value) => setDraft((d) => ({ ...d, [f.key]: value }))}
-            />
-            {fieldErrors[f.key] && (
-              <Text accessibilityRole="alert" style={s.error}>
-                {fieldErrors[f.key]}
-              </Text>
-            )}
-          </View>
-        ))}
+              style={{
+                gap: 6,
+                flexGrow: 1,
+                flexBasis:
+                  f.type === "boolean"
+                    ? "28%"
+                    : f.type === "time"
+                      ? "44%"
+                      : "100%",
+              }}
+            >
+              <Input
+                key={f.key}
+                field={f}
+                value={draft[f.key]}
+                client={client}
+                onChange={(value) =>
+                  setDraft((d) => ({ ...d, [f.key]: value }))
+                }
+              />
+              {fieldErrors[f.key] && (
+                <Text accessibilityRole="alert" style={s.error}>
+                  {fieldErrors[f.key]}
+                </Text>
+              )}
+            </View>
+          ))}
+      </View>
       <ErrorNotice message={error || serverError} />
-      <Button
-        title="Revisar cambios"
-        onPress={() => {
-          try {
-            setError("");
-            form.submit(bodyFor(form.fields, draft, form.edit));
-          } catch (e) {
-            setError(errorText(e));
-          }
-        }}
-      />
+      <View style={[s.row, { justifyContent: "flex-end" }]}>
+        <Button
+          title="Revisar cambios"
+          onPress={() => {
+            try {
+              setError("");
+              form.submit(bodyFor(form.fields, draft, form.edit));
+            } catch (e) {
+              setError(errorText(e));
+            }
+          }}
+        />
+      </View>
     </Sheet>
   );
 }
@@ -548,6 +621,16 @@ function Workspace({
   const busy = fetching || loadedKey !== requestKey;
   const { width } = useWindowDimensions();
   const canWrite = r.write.includes(session.user.role) && !uncertain;
+  const [transition, setTransition] = useState(false);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(transitionTimer.current), []);
+  function showTransition() {
+    setTransition(true);
+    clearTimeout(transitionTimer.current);
+    transitionTimer.current = setTimeout(() => setTransition(false), 320);
+  }
   useEffect(() => {
     const serial = ++requestSerial.current;
     let current = true;
@@ -654,6 +737,7 @@ function Workspace({
   }, [client, enrollmentToWatch, form, pending]);
   function navigate(next: string, flow?: RelatedFlow) {
     if (writing) return;
+    showTransition();
     detailSerial.current++;
     setDeviceScope(flow?.deviceScope);
     setKey(next);
@@ -688,6 +772,7 @@ function Workspace({
     if (typeof v?.deviceKey === "string") setSecret(v.deviceKey);
   }
   function createOrEdit(row?: Row, seed?: Row, target: Resource = r) {
+    showTransition();
     setError("");
     setServerFields({});
     setForm({
@@ -809,7 +894,7 @@ function Workspace({
       }
     }
   }
-  async function exportCsv() {
+  async function exportCsv(asPdf = false) {
     if (writeLock.current) return;
     writeLock.current = true;
     setWriting(true);
@@ -830,7 +915,8 @@ function Workspace({
         query,
         csv: true,
       })) as string;
-      if (Platform.OS === "web") {
+      if (asPdf) await exportPdf(csv, r.title, query);
+      else if (Platform.OS === "web") {
         const url = URL.createObjectURL(
           new Blob([csv], { type: "text/csv;charset=utf-8" }),
         );
@@ -841,7 +927,11 @@ function Workspace({
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else await Share.share({ title: `NexAccess ${r.title}`, message: csv });
       setNotice(
-        "Exportación generada por el servidor con los filtros aplicados.",
+        asPdf
+          ? Platform.OS === "web"
+            ? "Reporte preparado: elegí Guardar como PDF en el diálogo de impresión."
+            : "PDF preparado con los filtros aplicados."
+          : "Exportación generada por el servidor con los filtros aplicados.",
       );
     } catch (e) {
       setError(errorText(e));
@@ -860,9 +950,6 @@ function Workspace({
       <View style={s.top}>
         <View style={{ flex: 1 }}>
           <Text style={s.brand}>NexAccess</Text>
-          <Text style={s.muted}>
-            {session.user.username} · {session.user.role} · Datos del servidor
-          </Text>
         </View>
         <Button title="Cerrar sesión" secondary onPress={onLogout} />
       </View>
@@ -909,7 +996,7 @@ function Workspace({
               <Text accessibilityRole="header" style={s.title}>
                 {r.title}
               </Text>
-              <Text style={s.muted}>{r.description}</Text>
+
               {!!contextLabel && (
                 <View style={s.card}>
                   <Text style={s.label}>Consulta: {contextLabel}</Text>
@@ -971,7 +1058,15 @@ function Workspace({
                     }
                     secondary
                     disabled={writing || busy}
-                    onPress={exportCsv}
+                    onPress={() => void exportCsv()}
+                  />
+                )}
+                {r.export && (
+                  <Button
+                    title="Exportar PDF"
+                    secondary
+                    disabled={writing || busy}
+                    onPress={() => void exportCsv(true)}
                   />
                 )}
                 {r.key === "attendance" && (
@@ -1053,20 +1148,30 @@ function Workspace({
               )}
               {showFilters && r.key !== "enrollments" && (
                 <View style={s.card}>
-                  {r.filters
-                    .filter((f) => !(deviceScope && f.key === "deviceId"))
-                    .map((f) => (
-                      <Input
-                        key={f.key}
-                        field={f}
-                        filter
-                        value={filters[f.key]}
-                        client={client}
-                        onChange={(v) =>
-                          setFilters((d) => ({ ...d, [f.key]: v }))
-                        }
-                      />
-                    ))}
+                  <View style={s.formGrid}>
+                    {r.filters
+                      .filter((f) => !(deviceScope && f.key === "deviceId"))
+                      .map((f) => (
+                        <View
+                          key={f.key}
+                          style={{
+                            flexGrow: 1,
+                            flexBasis: f.type === "datetime" ? "44%" : "100%",
+                          }}
+                        >
+                          <Input
+                            key={f.key}
+                            field={f}
+                            filter
+                            value={filters[f.key]}
+                            client={client}
+                            onChange={(v) =>
+                              setFilters((d) => ({ ...d, [f.key]: v }))
+                            }
+                          />
+                        </View>
+                      ))}
+                  </View>
                   <View style={s.row}>
                     <Button
                       title="Aplicar filtros"
@@ -1074,6 +1179,7 @@ function Workspace({
                       onPress={() => {
                         try {
                           queryFor(r, filters);
+                          showTransition();
                           setPage(1);
                           setApplied({ ...filters });
                           setSelected(undefined);
@@ -1130,11 +1236,7 @@ function Workspace({
                 </View>
               )}
               {busy ? (
-                <ActivityIndicator
-                  accessibilityLabel="Cargando registros"
-                  color={color.primary}
-                  size="large"
-                />
+                <View style={{ minHeight: 48 }} />
               ) : (
                 <>
                   <Text style={s.label}>
@@ -1438,6 +1540,13 @@ function Workspace({
           />
         </Sheet>
       )}
+      <BusyOverlay
+        active={
+          (!supplemental && busy) ||
+          writing ||
+          (transition && !["dashboard", "alertas"].includes(key))
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -1647,7 +1756,15 @@ const s = StyleSheet.create({
     gap: 12,
   },
   summary: { gap: 4 },
+  formGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    alignItems: "center",
+  },
   button: {
+    flexDirection: "row",
+    gap: 8,
     minHeight: 44,
     paddingHorizontal: 16,
     paddingVertical: 12,

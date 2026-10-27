@@ -87,8 +87,8 @@ const device: Field = {
   required: true,
 };
 const dateFilters: Field[] = [
-  { key: "from", label: "Desde (fecha y hora con zona)", type: "datetime" },
-  { key: "to", label: "Hasta (fecha y hora con zona)", type: "datetime" },
+  { key: "from", label: "Desde", type: "datetime" },
+  { key: "to", label: "Hasta", type: "datetime" },
 ];
 const activeFilter: Field = {
   key: "isActive",
@@ -362,7 +362,7 @@ export const resources: Resource[] = [
       },
       {
         key: "occurredAt",
-        label: "Fecha y hora con zona",
+        label: "Fecha y hora",
         type: "datetime",
         required: true,
       },
