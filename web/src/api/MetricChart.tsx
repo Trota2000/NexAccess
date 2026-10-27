@@ -38,26 +38,29 @@ export default function MetricChart({
             accessibilityLabel="Gráfico de barras con valores"
             style={{
               height: 300,
-              minWidth: Math.max(440, chosen.length * 100),
+              minWidth: Math.max(440, metrics.length * 100),
               flex: 1,
               paddingTop: 18,
               paddingHorizontal: 26,
             }}
           >
             <View style={s.plot}>
-              {chosen.map((m) => {
-                const index = metrics.indexOf(m),
-                  height = m.value === undefined ? 0 : (m.value / max) * 180;
+              {metrics.map((m, index) => {
+                if (hidden.includes(seriesKey(m)))
+                  return (
+                    <View
+                      key={seriesKey(m)}
+                      style={s.slot}
+                      accessible={false}
+                    />
+                  );
+                const height =
+                  m.value === undefined ? 0 : (m.value / max) * 180;
                 return (
                   <View
-                    key={m.label}
+                    key={seriesKey(m)}
                     accessibilityLabel={`${m.label}: ${m.value ?? "no disponible"}`}
-                    style={{
-                      flex: 1,
-                      height: "100%",
-                      alignItems: "center",
-                      justifyContent: "flex-end",
-                    }}
+                    style={s.slot}
                   >
                     <View
                       style={[
@@ -65,6 +68,7 @@ export default function MetricChart({
                         {
                           height,
                           width: "72%",
+                          maxWidth: 56,
                           backgroundColor: palette[index % palette.length],
                         },
                       ]}
@@ -206,7 +210,12 @@ const s = StyleSheet.create({
   },
   heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
   text: { fontSize: 13, color: "#586e74" },
-  summary: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5, justifyContent: "center" },
+  summary: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -5,
+    justifyContent: "center",
+  },
   indicator: {
     flex: 1,
     backgroundColor: "#eef3f1",
@@ -239,6 +248,12 @@ const s = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
+  },
+  slot: {
+    flex: 1,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
   },
   plot: {
     flexDirection: "row",
