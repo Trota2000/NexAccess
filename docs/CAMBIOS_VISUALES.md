@@ -61,3 +61,9 @@ Se retiraron las tarjetas grandes que repetían los datos del gráfico. El mismo
 El período queda plegado por defecto detrás del botón Período. Al desplegarlo se mantienen los calendarios Desde/Hasta, validación y aplicación explícita. Un rango válido cierra el panel y deja una indicación breve de las fechas aplicadas. Actualizar conserva ese rango y usa un botón compacto junto al título, con las mismas dimensiones y paleta que las acciones de Empleados. Los demás módulos no cambian de tamaño.
 
 ![Cabecera compacta y filtro plegado](screenshots/dashboard-compacto.jpg)
+
+## Ancho y posición estables de las barras
+
+Cada indicador conserva su posición horizontal aunque se desmarquen otros. Se reserva su columna vacía y el ancho de las barras queda limitado a 56 px. El ancho del gráfico se calcula con todos los indicadores, por lo que tampoco cambia el desplazamiento horizontal en móvil. Se conserva el ajuste de escala vertical según los datos seleccionados, la paleta, las casillas, los valores no disponibles, el estado sin selección y las consultas.
+
+![Una barra seleccionada mantiene su proporción](screenshots/dashboard-barra-fija.jpg)
