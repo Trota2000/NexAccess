@@ -55,3 +55,9 @@ La revisión de los logos incluye autenticación y cierre de sesión con fixture
 Se retiraron las tarjetas grandes que repetían los datos del gráfico. El mismo panel del gráfico contiene ahora una cuadrícula compacta de indicadores, con columnas del mismo ancho (tres, dos o una según el espacio disponible). Cada indicador conserva su total, casilla para mostrar/ocultar la barra y acceso Consultar con los filtros originales. Los errores y la aclaración de lectores se conservan; las casillas no ocultan los accesos de consulta. No cambia la API ni la selección de período.
 
 ![Dashboard con indicadores integrados](screenshots/dashboard-integrado.jpg)
+
+## Cabecera compacta del dashboard
+
+El período queda plegado por defecto detrás del botón Período. Al desplegarlo se mantienen los calendarios Desde/Hasta, validación y aplicación explícita. Un rango válido cierra el panel y deja una indicación breve de las fechas aplicadas. Actualizar conserva ese rango y usa un botón compacto junto al título, con las mismas dimensiones y paleta que las acciones de Empleados. Los demás módulos no cambian de tamaño.
+
+![Cabecera compacta y filtro plegado](screenshots/dashboard-compacto.jpg)
