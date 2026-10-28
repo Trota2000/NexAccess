@@ -16,6 +16,7 @@ import {
   LucideIcon,
 } from "lucide-react-native";
 import CalendarField from "./CalendarField";
+import CompanySettings from "./CompanySettings";
 import BusyOverlay from "./BusyOverlay";
 import MetricChart from "./MetricChart";
 import { calendarInstant, localParts } from "./dates";
@@ -443,14 +444,7 @@ function Settings({
           </Text>
         )}
       </View>
-      <View style={s.card}>
-        <Text style={s.heading}>Configuración institucional</Text>
-        <Text style={s.muted}>
-          La API actual no expone preferencias institucionales ni recuperación
-          pública de contraseña. Contactá al administrador para esos cambios. No
-          se guardan ajustes ficticios como si fueran del servidor.
-        </Text>
-      </View>
+      <CompanySettings client={client} session={session} />
     </>
   );
 }

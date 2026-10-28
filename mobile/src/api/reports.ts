@@ -1,5 +1,6 @@
 import { localParts } from "./dates";
 import { Row } from "./client";
+import { CompanyBranding, isLogoDataUrl } from "./company";
 export function parseCsv(csv: string): string[][] {
   const text = csv.replace(/^\uFEFF/, "");
   const first = text.split(/\r?\n/, 1)[0];
@@ -82,11 +83,23 @@ function filterValue(key: string, value: unknown) {
   }
   return String(value);
 }
-export function reportHtml(csv: string, title: string, filters: Row): string {
+export function reportHtml(
+  csv: string,
+  title: string,
+  filters: Row,
+  branding?: CompanyBranding,
+): string {
+  const company = branding?.company;
+  const logo = branding?.logoDataUrl;
+  if (logo && !isLogoDataUrl(logo))
+    throw new Error("El logotipo del membrete no es válido.");
+  const identity = company
+    ? `<header class="letterhead">${logo ? `<img class="company-logo" alt="Logotipo institucional" src="${escapeHtml(logo)}">` : ""}<div class="company-info"><h2>${escapeHtml(company.razonSocial)}</h2>${company.nombreFantasia ? `<p class="trade-name">${escapeHtml(company.nombreFantasia)}</p>` : ""}${company.ruc ? `<p>RUC: ${escapeHtml(company.ruc)}</p>` : ""}${company.direccion ? `<p>${escapeHtml(company.direccion)}</p>` : ""}${company.telefono || company.email ? `<p>${[company.telefono, company.email].filter(Boolean).map(escapeHtml).join(" · ")}</p>` : ""}</div></header>`
+    : "";
   const [headers, ...rows] = parseCsv(csv);
   const summary = Object.entries(filters)
     .filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v]) => `${filterTitles[k] ?? k}: ${filterValue(k, v)}`)
     .join(" · ");
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexAccess · ${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#263e45;font-size:10px}h1{color:#286c64;font-size:21px}p{line-height:1.5}table{border-collapse:collapse;width:100%;table-layout:fixed}th{background:#dcebe5;text-align:left}th,td{border:1px solid #cedcd7;padding:7px;overflow-wrap:anywhere}thead{display:table-header-group}tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f5}</style></head><body><h1>NexAccess · ${escapeHtml(title)}</h1><p>${escapeHtml(summary)}</p><p>${rows.length} registros · Horarios del CSV: zona configurada en el servidor</p><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(columnTitles[h] ?? h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>${!rows.length ? "<p>Sin registros para los filtros seleccionados.</p>" : ""}</body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexAccess · ${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#263e45;font-size:10px}h1{color:#286c64;font-size:21px}.letterhead{display:flex;align-items:center;gap:24px;border-bottom:2px solid #286c64;padding-bottom:14px;margin-bottom:16px;break-inside:avoid}.company-logo{width:130px;height:85px;object-fit:contain;flex-shrink:0}.company-info{min-width:0;overflow-wrap:anywhere}.company-info h2{font-size:19px;margin:0 0 4px;color:#263e45}.company-info p{margin:2px 0}.trade-name{font-size:13px}.report-footer{margin-top:16px;color:#5b6a70;font-size:9px}p{line-height:1.5}table{border-collapse:collapse;width:100%;table-layout:fixed}th{background:#dcebe5;text-align:left}th,td{border:1px solid #cedcd7;padding:7px;overflow-wrap:anywhere}thead{display:table-header-group}tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f5}</style></head><body>${identity}<h1>${company ? "" : "NexAccess · "}${escapeHtml(title)}</h1><p>${escapeHtml(summary)}</p><p>${rows.length} registros · Horarios del CSV: zona configurada en el servidor</p><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(columnTitles[h] ?? h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>${!rows.length ? "<p>Sin registros para los filtros seleccionados.</p>" : ""}<footer class="report-footer">Generado con NexAccess</footer></body></html>`;
 }

@@ -57,6 +57,7 @@ import {
 import CalendarField from "./CalendarField";
 import BusyOverlay from "./BusyOverlay";
 import { exportPdf } from "./pdf";
+import { loadCompanyBranding } from "./company";
 import { ApiClient, ApiError, id, Page, Row, Session } from "./client";
 import Overview, { extraModules } from "./Overview";
 import {
@@ -734,7 +735,7 @@ function Workspace({
       m.key !== "alertas" || ["ADMIN", "SEGURIDAD"].includes(session.user.role),
   );
   const navigation = [supplements[0], ...available, ...supplements.slice(1)];
-  const [key, setKey] = useState("employees");
+  const [key, setKey] = useState("dashboard");
   const supplemental = supplements.some((m) => m.key === key);
   const r = resource(supplemental ? "employees" : key);
   const [filters, setFilters] = useState<Row>({});
@@ -784,7 +785,8 @@ function Workspace({
     s.detailUniformButton,
     {
       width: detailActionWidth
-        ? (detailActionWidth - 1 - spacing.sm * (queryColumns - 1)) / queryColumns
+        ? (detailActionWidth - 1 - spacing.sm * (queryColumns - 1)) /
+          queryColumns
         : "100%",
     },
   ];
@@ -792,7 +794,8 @@ function Workspace({
     s.detailUniformButton,
     {
       width: detailActionWidth
-        ? (detailActionWidth - 1 - spacing.sm * (recordColumns - 1)) / recordColumns
+        ? (detailActionWidth - 1 - spacing.sm * (recordColumns - 1)) /
+          recordColumns
         : "100%",
     },
   ];
@@ -1091,7 +1094,8 @@ function Workspace({
         query,
         csv: true,
       })) as string;
-      if (asPdf) await exportPdf(csv, r.title, query);
+      if (asPdf)
+        await exportPdf(csv, r.title, query, await loadCompanyBranding(client));
       else if (Platform.OS === "web") {
         const url = URL.createObjectURL(
           new Blob([csv], { type: "text/csv;charset=utf-8" }),

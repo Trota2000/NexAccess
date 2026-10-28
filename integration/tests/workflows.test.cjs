@@ -20,7 +20,18 @@ const {
   formErrorMap,
   loadMetrics,
 } = require("../source/workflows.ts");
-const snapshot = require("../openapi-routes.json");
+const originalSnapshot = require("../openapi-routes.json");
+// Additional supplied Empresa API v1 documentation, without altering the original OpenAPI snapshot.
+const snapshot = [
+  ...originalSnapshot,
+  ...[
+    ["GET", "/empresa"],
+    ["PUT", "/empresa"],
+    ["POST", "/empresa/logo"],
+    ["GET", "/empresa/logo"],
+    ["DELETE", "/empresa/logo"],
+  ].map(([method, path]) => ({ method, path, security: "bearer" })),
+];
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -56,7 +67,8 @@ async function session(role = "ADMIN", handler = () => json({ id: 12 })) {
 test("catalog covers every operation/security scheme in the supplied OpenAPI, without invented routes", () => {
   const signature = ({ method, path, security }) =>
     `${method} ${path} ${security}`;
-  assert.equal(snapshot.length, 53);
+  assert.equal(originalSnapshot.length, 53);
+  assert.equal(snapshot.length, 58);
   assert.deepEqual(
     operations.map(signature).sort(),
     snapshot.map(signature).sort(),
@@ -75,6 +87,7 @@ test("all protected operator operations send the login bearer header, never a de
     await client.request(op.path.replace(/\{id\}|\{roleId\}/g, "12"), {
       method: op.method,
       ...(op.bodyKeys ? { body: {} } : {}),
+      ...(op.id === "empresa.logo.upload" ? { formData: new FormData() } : {}),
     });
     const { url, init } = calls.at(-1);
     assert.equal(init.headers.Authorization, "Bearer SYNTHETIC-ONLY", op.id);

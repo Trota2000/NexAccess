@@ -141,6 +141,22 @@ const data = {
   users,
   enrollments: [],
 };
+let company =
+  process.env.FIXTURE_COMPANY_EMPTY === "1"
+    ? null
+    : {
+        id: 1,
+        razonSocial: "Organización Demo S.A.",
+        nombreFantasia: "Empresa de demostración",
+        ruc: "80000000-0",
+        direccion: "Asunción, Paraguay",
+        telefono: "+595 21 000 000",
+        email: "contacto@example.test",
+        activo: true,
+        tieneLogo: false,
+      };
+let companyLogo;
+let companyLogoType;
 const requests = [];
 const server = http.createServer(async (req, res) => {
   res.setHeader("content-type", "application/json");
@@ -152,13 +168,18 @@ const server = http.createServer(async (req, res) => {
       Number(process.env.FIXTURE_DELAY_MS || 0),
     );
   };
-  const fail = (status, detail) =>
-    send({ status, detail, code: `FIXTURE_${status}` }, status);
+  const fail = (status, detail, code = `FIXTURE_${status}`) =>
+    send({ status, detail, code }, status);
   const url = new URL(req.url, "http://localhost");
   const parts = url.pathname.replace(/^\/api\/v1\//, "").split("/");
   const [key, idString, action, arg] = parts;
-  let raw = "";
-  for await (const chunk of req) raw += chunk;
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const rawBuffer = Buffer.concat(chunks);
+  const multipart = req.headers["content-type"]?.startsWith(
+    "multipart/form-data",
+  );
+  const raw = multipart ? "" : rawBuffer.toString("utf8");
   let body;
   try {
     body = raw ? JSON.parse(raw) : undefined;
@@ -194,6 +215,82 @@ const server = http.createServer(async (req, res) => {
   if (!user) return fail(401, "Token ficticio requerido");
   if (key === "auth" && idString === "me") return send(user);
   if (key === "fixture-requests") return send(requests);
+  if (key === "empresa") {
+    if (req.method !== "GET" && role !== "ADMIN")
+      return fail(403, "Sin permiso de escritura");
+    if (!idString && req.method === "GET")
+      return company
+        ? send(company)
+        : fail(404, "Empresa no configurada", "EMPRESA_NOT_CONFIGURED");
+    if (!idString && req.method === "PUT") {
+      if (!body?.razonSocial?.trim())
+        return fail(400, "Razón social requerida", "VALIDATION_ERROR");
+      company = {
+        id: 1,
+        razonSocial: body.razonSocial,
+        nombreFantasia: body.nombreFantasia,
+        ruc: body.ruc,
+        direccion: body.direccion,
+        telefono: body.telefono,
+        email: body.email,
+        activo: true,
+        tieneLogo: !!companyLogo,
+      };
+      return send(company);
+    }
+    if (idString === "logo") {
+      if (req.method === "GET") {
+        if (!companyLogo) return fail(404, "Sin logotipo");
+        res.setHeader("content-type", companyLogoType);
+        return res.end(companyLogo);
+      }
+      if (req.method === "DELETE") {
+        companyLogo = undefined;
+        if (company) company.tieneLogo = false;
+        return send(undefined, 204);
+      }
+      if (req.method === "POST") {
+        if (!company)
+          return fail(400, "Guardá la empresa primero", "VALIDATION_ERROR");
+        const boundary = req.headers["content-type"]?.match(
+          /boundary=(?:"([^"]+)"|([^;]+))/,
+        );
+        const part = rawBuffer
+          .toString("latin1")
+          .split("--" + (boundary?.[1] || boundary?.[2]))
+          .find((p) => /name="logo"/.test(p));
+        if (!part) return fail(400, "Logo requerido", "LOGO_REQUIRED");
+        const split = part.indexOf("\r\n\r\n");
+        const bytes = Buffer.from(
+          part.slice(split + 4).replace(/\r\n$/, ""),
+          "latin1",
+        );
+        const mime = part
+          .slice(0, split)
+          .match(/Content-Type: ([^\r\n]+)/i)?.[1];
+        if (bytes.length > 2 * 1024 * 1024)
+          return fail(400, "Hasta 2 MB", "LOGO_TOO_LARGE");
+        if (
+          !(
+            (mime === "image/png" &&
+              bytes
+                .subarray(0, 8)
+                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+            (mime === "image/jpeg" &&
+              bytes[0] === 255 &&
+              bytes[1] === 216 &&
+              bytes[2] === 255)
+          )
+        )
+          return fail(400, "Imagen inválida", "VALIDATION_ERROR");
+        companyLogo = bytes;
+        companyLogoType = mime;
+        company.tieneLogo = true;
+        return send(company);
+      }
+    }
+    return fail(404, "Operación no disponible");
+  }
   const readable =
     role === "ADMIN" ||
     ["employees", "roles", "areas"].includes(key) ||

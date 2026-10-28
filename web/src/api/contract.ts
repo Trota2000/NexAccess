@@ -27,6 +27,19 @@ function add(
 add("health", "GET", "/health", all, undefined, "public");
 add("login", "POST", "/auth/login", all, ["username", "password"], "public");
 add("me", "GET", "/auth/me", all);
+// Empresa API v1: one organization per installation.
+add("empresa.get", "GET", "/empresa", all);
+add("empresa.save", "PUT", "/empresa", admin, [
+  "razonSocial",
+  "nombreFantasia",
+  "ruc",
+  "direccion",
+  "telefono",
+  "email",
+]);
+add("empresa.logo.upload", "POST", "/empresa/logo", admin);
+add("empresa.logo.get", "GET", "/empresa/logo", all);
+add("empresa.logo.delete", "DELETE", "/empresa/logo", admin);
 const employeeFields = [
   "documentNumber",
   "firstName",
