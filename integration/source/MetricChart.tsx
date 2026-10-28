@@ -1,17 +1,9 @@
+import { Colors, spacing, useDesign } from "./Theme";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Check, ChevronRight, SlidersHorizontal } from "lucide-react-native";
 import { Metric } from "./workflows";
 const seriesKey = (m: Metric) => m.key + String(m.query.result ?? "");
-const palette = [
-  "#286c64",
-  "#7b9991",
-  "#93b5ad",
-  "#b5cbb6",
-  "#7d9da6",
-  "#a5b49c",
-  "#c2b69a",
-];
 export default function MetricChart({
   metrics,
   onConsult,
@@ -19,6 +11,17 @@ export default function MetricChart({
   metrics: Metric[];
   onConsult?: (metric: Metric) => void;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
+  const palette = [
+    color.chart1,
+    color.chart2,
+    color.chart3,
+    color.chart4,
+    color.chart5,
+    color.chart6,
+    color.chart7,
+  ];
   const [width, setWidth] = useState(0);
   const columns = width >= 850 ? 3 : width >= 500 ? 2 : 1;
   const [hidden, setHidden] = useState<string[]>([]);
@@ -27,7 +30,7 @@ export default function MetricChart({
   return (
     <View style={s.card} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       <View style={s.row}>
-        <SlidersHorizontal size={18} color="#286c64" />
+        <SlidersHorizontal size={18} color={color.primary} />
         <Text style={s.heading}>Comparar indicadores</Text>
       </View>
       {!chosen.length ? (
@@ -90,7 +93,7 @@ export default function MetricChart({
                         height: 42,
                         textAlign: "center",
                         fontSize: 11,
-                        color: "#586e74",
+                        color: color.muted,
                         width: "100%",
                       }}
                     >
@@ -120,6 +123,7 @@ export default function MetricChart({
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityLabel={`Mostrar ${m.label}`}
+                  aria-checked={!hidden.includes(seriesKey(m))}
                   accessibilityState={{
                     checked: !hidden.includes(seriesKey(m)),
                   }}
@@ -144,7 +148,7 @@ export default function MetricChart({
                     ]}
                   >
                     {!hidden.includes(seriesKey(m)) && (
-                      <Check size={13} color="#f8faf8" />
+                      <Check size={13} color={color.card} />
                     )}
                   </View>
                   <Text numberOfLines={2} style={s.indicatorLabel}>
@@ -168,7 +172,7 @@ export default function MetricChart({
                       style={s.consult}
                     >
                       <Text style={s.consultText}>Consultar</Text>
-                      <ChevronRight size={16} color="#286c64" />
+                      <ChevronRight size={16} color={color.primary} />
                     </Pressable>
                   )}
                 </View>
@@ -197,101 +201,107 @@ export default function MetricChart({
     </View>
   );
 }
-const s = StyleSheet.create({
-  card: {
-    backgroundColor: "#f8faf8",
-    borderWidth: 1,
-    borderColor: "#cedcd7",
-    borderRadius: 16,
-    padding: 18,
-    gap: 16,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
-  text: { fontSize: 13, color: "#586e74" },
-  summary: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -5,
-    justifyContent: "center",
-  },
-  indicator: {
-    flex: 1,
-    backgroundColor: "#eef3f1",
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    gap: 4,
-  },
-  indicatorBody: { flexDirection: "row", alignItems: "center", gap: 8 },
-  indicatorLabel: { color: "#263e45", fontSize: 13, lineHeight: 18, flex: 1 },
-  indicatorFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  total: { fontSize: 20, fontWeight: "700", color: "#286c64" },
-  consult: {
-    flexDirection: "row",
-    gap: 4,
-    alignItems: "center",
-    minHeight: 44,
-    paddingHorizontal: 4,
-  },
-  consultText: { fontSize: 12, fontWeight: "600", color: "#286c64" },
-  error: { fontSize: 13, color: "#8e343c" },
-  check: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    minHeight: 44,
-  },
-  box: {
-    width: 19,
-    height: 19,
-    borderWidth: 1,
-    borderRadius: 5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  slot: {
-    flex: 1,
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  plot: {
-    flexDirection: "row",
-    gap: 12,
-    height: 190,
-    borderBottomWidth: 1,
-    borderColor: "#a6bbb3",
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  bar: {
-    position: "relative",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    borderWidth: 1,
-    borderColor: "#eef3f1",
-    alignItems: "flex-end",
-    paddingRight: 6,
-  },
-  value: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#173e39",
-    backgroundColor: "#f8faf8",
-    paddingHorizontal: 4,
-    borderRadius: 4,
-    marginTop: 0,
-  },
-});
+function makeStyles(color: Colors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: color.card,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: 18,
+      gap: spacing.lg,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
+    heading: { fontSize: 18, fontWeight: "600", color: color.ink },
+    text: { fontSize: 13, color: color.muted },
+    summary: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginHorizontal: -5,
+      justifyContent: "center",
+    },
+    indicator: {
+      flex: 1,
+      backgroundColor: color.bg,
+      borderRadius: 12,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      gap: spacing.xs,
+    },
+    indicatorBody: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    indicatorLabel: { color: color.ink, fontSize: 13, lineHeight: 18, flex: 1 },
+    indicatorFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.sm,
+    },
+    total: { fontSize: 20, fontWeight: "700", color: color.primary },
+    consult: {
+      flexDirection: "row",
+      gap: spacing.xs,
+      alignItems: "center",
+      minHeight: 44,
+      paddingHorizontal: spacing.xs,
+    },
+    consultText: { fontSize: 12, fontWeight: "600", color: color.primary },
+    error: { fontSize: 13, color: color.error },
+    check: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      minHeight: 44,
+    },
+    box: {
+      width: 19,
+      height: 19,
+      borderWidth: 1,
+      borderRadius: 5,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slot: {
+      flex: 1,
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    plot: {
+      flexDirection: "row",
+      gap: spacing.md,
+      height: 190,
+      borderBottomWidth: 1,
+      borderColor: color.controlBorder,
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    bar: {
+      position: "relative",
+      borderTopLeftRadius: 8,
+      borderTopRightRadius: 8,
+      borderWidth: 1,
+      borderColor: color.bg,
+      alignItems: "flex-end",
+      paddingRight: 6,
+    },
+    value: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: color.ink,
+      backgroundColor: color.card,
+      paddingHorizontal: spacing.xs,
+      borderRadius: 4,
+      marginTop: 0,
+    },
+  });
+}

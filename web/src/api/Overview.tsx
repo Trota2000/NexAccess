@@ -1,3 +1,4 @@
+import { Colors, spacing, useDesign } from "./Theme";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -39,15 +40,18 @@ function Action({
   icon?: LucideIcon;
   expanded?: boolean;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const Icon = icon ?? (/actualizar/i.test(title) ? RefreshCw : ChevronRight);
   return (
     <Pressable
       accessibilityRole="button"
+      aria-expanded={expanded}
       accessibilityState={expanded === undefined ? undefined : { expanded }}
       onPress={onPress}
       style={[s.button, compact && s.compactButton]}
     >
-      <Icon size={17} color="#286c64" />
+      <Icon size={17} color={color.primary} />
       <Text style={s.action}>{title}</Text>
     </Pressable>
   );
@@ -61,6 +65,8 @@ function Dashboard({
   session: Session;
   onOpen: (f: RelatedFlow) => void;
 }) {
+  const { styles: s } = useDesign(makeStyles);
+
   const [metrics, setMetrics] = useState<Metric[]>();
   const [revision, setRevision] = useState(0);
   const [range, setRange] = useState<Row>();
@@ -185,6 +191,8 @@ function Reports({
   session: Session;
   onOpen: (f: RelatedFlow) => void;
 }) {
+  const { styles: s } = useDesign(makeStyles);
+
   const end = new Date(),
     query = {
       from: new Date(end.getTime() - 7 * 86400000).toISOString(),
@@ -263,6 +271,8 @@ function Incidents({
   client: ApiClient;
   onOpen: (f: RelatedFlow) => void;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const [data, setData] = useState<{
     events: Row[];
     total: number;
@@ -317,7 +327,7 @@ function Incidents({
       {!data ? (
         <ActivityIndicator
           accessibilityLabel="Cargando incidencias"
-          color="#286c64"
+          color={color.primary}
         />
       ) : data.error ? (
         <Text accessibilityRole="alert" style={s.error}>
@@ -371,6 +381,8 @@ function Settings({
   client: ApiClient;
   session: Session;
 }) {
+  const { color, styles: s } = useDesign(makeStyles);
+
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   async function check() {
@@ -424,7 +436,7 @@ function Settings({
           title="Verificar conexión y sesión"
           onPress={() => void check()}
         />
-        {busy && <ActivityIndicator color="#286c64" />}
+        {busy && <ActivityIndicator color={color.primary} />}
         {!!status && (
           <Text accessibilityLiveRegion="polite" style={s.text}>
             {status}
@@ -460,66 +472,68 @@ export default function Overview({
     return <Incidents client={client} onOpen={onOpen} />;
   return <Settings client={client} session={session} />;
 }
-const s = StyleSheet.create({
-  title: { fontSize: 26, fontWeight: "700", color: "#263e45" },
-  dashboardToolbar: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  toolbarActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8,
-  },
-  compactButton: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  periodPanel: {
-    backgroundColor: "#f8faf8",
-    borderWidth: 1,
-    borderColor: "#cedcd7",
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-  },
-  periodFields: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  periodField: { flex: 1, minWidth: 190, maxWidth: 320, gap: 4 },
-  periodCaption: { fontSize: 13, color: "#586e74" },
-  heading: { fontSize: 18, fontWeight: "600", color: "#263e45" },
-  text: { fontSize: 15, lineHeight: 23, color: "#263e45" },
-  muted: { fontSize: 14, lineHeight: 21, color: "#586e74" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  card: {
-    backgroundColor: "#f8faf8",
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#cedcd7",
-    gap: 12,
-    flexGrow: 1,
-    minWidth: 240,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 44,
-    backgroundColor: "#dcebe5",
-    padding: 12,
-    borderRadius: 12,
-    justifyContent: "center",
-  },
-  action: { color: "#286c64", fontWeight: "600" },
-  error: {
-    color: "#8e343c",
-    padding: 12,
-    backgroundColor: "#f7e8e7",
-    borderRadius: 10,
-  },
-});
+function makeStyles(color: Colors) {
+  return StyleSheet.create({
+    title: { fontSize: 26, fontWeight: "700", color: color.ink },
+    dashboardToolbar: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    toolbarActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    compactButton: {
+      alignSelf: "flex-start",
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+    },
+    periodPanel: {
+      backgroundColor: color.card,
+      borderWidth: 1,
+      borderColor: color.border,
+      borderRadius: 16,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    periodFields: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+    periodField: { flex: 1, minWidth: 190, maxWidth: 320, gap: spacing.xs },
+    periodCaption: { fontSize: 13, color: color.muted },
+    heading: { fontSize: 18, fontWeight: "600", color: color.ink },
+    text: { fontSize: 15, lineHeight: 23, color: color.ink },
+    muted: { fontSize: 14, lineHeight: 21, color: color.muted },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
+    card: {
+      backgroundColor: color.card,
+      padding: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: color.border,
+      gap: spacing.md,
+      flexGrow: 1,
+      minWidth: 240,
+    },
+    button: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      minHeight: 44,
+      backgroundColor: color.soft,
+      padding: spacing.md,
+      borderRadius: 12,
+      justifyContent: "center",
+    },
+    action: { color: color.primary, fontWeight: "600" },
+    error: {
+      color: color.error,
+      padding: spacing.md,
+      backgroundColor: color.errorBg,
+      borderRadius: 10,
+    },
+  });
+}
