@@ -122,3 +122,9 @@ Las copias en web/src/api y mobile/src/api se generan desde integration/source m
 - `web/src/features/settings/Settings.tsx`
 - `web/src/features/users/UserForm.tsx`
 - `web/src/theme.ts`
+
+## Ajuste de marca tras revisión
+
+Se retiró la placa clara del logo en encabezado y login. El PNG original conserva sus bytes y transparencia; en claro mantiene sus colores y en oscuro se representa con un tinte monocromático claro mediante Image.tintColor. El símbolo del cargador usa la misma variante y su superficie usa el tema actual, mientras el anillo conserva el verde. No se generan imágenes nuevas, no se altera la geometría del logo ni se cambia funcionalidad.
+
+La captura `docs/screenshots/design-login-oscuro.jpg` y la captura actualizada del login claro muestran este ajuste; las otras capturas documentan la revisión anterior del diseño.

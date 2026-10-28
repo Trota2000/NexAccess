@@ -1923,7 +1923,7 @@ function makeStyles(color: Colors) {
       width: 156,
       maxWidth: "100%",
       height: 48,
-      backgroundColor: color.logoSurface,
+      tintColor: color.logoTint || undefined,
       borderRadius: 8,
     },
     loginLogo: {
@@ -1931,7 +1931,7 @@ function makeStyles(color: Colors) {
       maxWidth: "100%",
       height: 104,
       alignSelf: "center",
-      backgroundColor: color.logoSurface,
+      tintColor: color.logoTint || undefined,
       borderRadius: 12,
     },
     title: { fontSize: 26, fontWeight: "700", color: color.ink },

@@ -53,7 +53,11 @@ export default function BusyOverlay({ active }: { active: boolean }) {
               source={loadingLogo}
               resizeMode="contain"
               accessibilityLabel="Símbolo de NexAccess"
-              style={{ width: 126, height: 50 }}
+              style={{
+                width: 126,
+                height: 50,
+                tintColor: color.logoTint || undefined,
+              }}
             />
           </View>
         </View>
@@ -75,7 +79,7 @@ function makeStyles(color: Colors) {
       alignItems: "center",
       justifyContent: "center",
       borderRadius: 24,
-      backgroundColor: color.logoSurface,
+      backgroundColor: color.card,
     },
     logo: {
       position: "absolute",

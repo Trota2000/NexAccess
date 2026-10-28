@@ -40,7 +40,7 @@
     "chart5": "#6E6C98",
     "chart6": "#8C6B3D",
     "chart7": "#687A35",
-    "logoSurface": "#F8FAFC"
+    "logoTint": ""
   },
   "dark": {
     "bg": "#0B1220",
@@ -83,6 +83,6 @@
     "chart5": "#C4B5FD",
     "chart6": "#E7BB80",
     "chart7": "#CDD997",
-    "logoSurface": "#F8FAFC"
+    "logoTint": "#F8FAFC"
   }
 }
