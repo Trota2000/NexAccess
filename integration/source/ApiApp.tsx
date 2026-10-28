@@ -1491,166 +1491,170 @@ function Workspace({
               Esperando al lector. Actualización automática cada 5 segundos.
             </Text>
           )}
-          {relatedFlows(r.key, selected, session.user.role).map((flow) => (
-            <Button
-              key={flow.title}
-              title={flow.title}
-              secondary
-              disabled={writing || !!(flow.seed && uncertain)}
-              onPress={() => navigate(flow.key, flow)}
-            />
-          ))}
-          {canWrite && r.edit && (
-            <Button
-              title="Editar registro"
-              onPress={() => createOrEdit(selected)}
-            />
-          )}
-          {canWrite &&
-            r.status &&
-            !(r.key === "credentials" && selected.revokedAt) &&
-            !(r.key === "users" && selected.id === session.user.id) && (
+          <View testID="nx-detail-related-actions" style={s.detailActionRow}>
+            {relatedFlows(r.key, selected, session.user.role).map((flow) => (
               <Button
-                title={selected.isActive ? "Desactivar" : "Activar"}
+                key={flow.title}
+                title={flow.title}
                 secondary
-                disabled={writing}
-                onPress={() =>
-                  prepare({
-                    title: selected.isActive
-                      ? "Desactivar registro"
-                      : "Activar registro",
-                    resource: r,
-                    path: `/${r.key}/${id(selected.id)}/status`,
-                    method: "PATCH",
-                    body: { isActive: !selected.isActive },
-                  })
-                }
+                disabled={writing || !!(flow.seed && uncertain)}
+                onPress={() => navigate(flow.key, flow)}
+              />
+            ))}
+          </View>
+          <View testID="nx-detail-record-actions" style={s.detailRecordActions}>
+            {canWrite && r.edit && (
+              <Button
+                title="Editar registro"
+                onPress={() => createOrEdit(selected)}
               />
             )}
-          {canWrite && r.key === "credentials" && !selected.revokedAt && (
-            <Button
-              title="Revocar definitivamente"
-              secondary
-              onPress={() =>
-                actionForm(
-                  "Revocar credencial",
-                  [
-                    {
-                      key: "reason",
-                      label: "Motivo de revocación",
-                      required: true,
-                      min: 3,
-                      max: 255,
-                    },
-                  ],
-                  `/credentials/${id(selected.id)}/revoke`,
-                )
-              }
-            />
-          )}
-          {canWrite && r.key === "devices" && (
-            <>
-              <Button
-                title="Rotar clave del dispositivo"
-                secondary
-                onPress={() =>
-                  prepare({
-                    title:
-                      "Rotar clave: el dispositivo deberá actualizar su configuración",
-                    resource: r,
-                    path: `/devices/${id(selected.id)}/rotate-key`,
-                    method: "POST",
-                    onSuccess: successSecret,
-                  })
-                }
-              />
-            </>
-          )}
-          {r.key === "employees" &&
-            ["ADMIN", "SEGURIDAD"].includes(session.user.role) &&
-            !uncertain && (
-              <>
+            {canWrite &&
+              r.status &&
+              !(r.key === "credentials" && selected.revokedAt) &&
+              !(r.key === "users" && selected.id === session.user.id) && (
                 <Button
-                  title="Asignar rol físico"
+                  title={selected.isActive ? "Desactivar" : "Activar"}
+                  secondary
+                  disabled={writing}
                   onPress={() =>
-                    setForm({
-                      title: "Asignar rol físico",
-                      fields: [
-                        {
-                          key: "roleId",
-                          label: "Rol físico",
-                          type: "id",
-                          reference: "roles",
-                          required: true,
-                        },
-                      ],
-                      submit: (body) =>
-                        prepare({
-                          title: "Asignar rol físico",
-                          resource: { ...r, write: ["ADMIN", "SEGURIDAD"] },
-                          path: `/employees/${id(selected.id)}/roles/${id(body.roleId)}`,
-                          method: "POST",
-                        }),
+                    prepare({
+                      title: selected.isActive
+                        ? "Desactivar registro"
+                        : "Activar registro",
+                      resource: r,
+                      path: `/${r.key}/${id(selected.id)}/status`,
+                      method: "PATCH",
+                      body: { isActive: !selected.isActive },
                     })
                   }
                 />
-                {Array.isArray(selected.roles) &&
-                  selected.roles.map((physicalRole: Row) => (
-                    <Button
-                      key={String(physicalRole.id)}
-                      title={`Quitar rol: ${String(physicalRole.name ?? physicalRole.code)}`}
-                      secondary
-                      onPress={() =>
-                        prepare({
-                          title: `Quitar rol físico ${String(physicalRole.name ?? physicalRole.code)}`,
-                          resource: { ...r, write: ["ADMIN", "SEGURIDAD"] },
-                          path: `/employees/${id(selected.id)}/roles/${id(physicalRole.id)}`,
-                          method: "DELETE",
-                        })
-                      }
-                    />
-                  ))}
-              </>
-            )}
-          {canWrite && r.key === "users" && (
-            <Button
-              title="Cambiar contraseña"
-              secondary
-              onPress={() =>
-                actionForm(
-                  "Cambiar contraseña",
-                  [
-                    {
-                      key: "newPassword",
-                      label: "Nueva contraseña",
-                      type: "password",
-                      required: true,
-                      min: 10,
-                      max: 200,
-                    },
-                  ],
-                  `/users/${id(selected.id)}/password`,
-                  "PUT",
-                )
-              }
-            />
-          )}
-          {canWrite &&
-            r.key === "enrollments" &&
-            selected.status === "PENDIENTE" && (
+              )}
+            {canWrite && r.key === "credentials" && !selected.revokedAt && (
               <Button
-                title="Cancelar enrolamiento"
+                title="Revocar definitivamente"
                 secondary
                 onPress={() =>
-                  prepare({
-                    title: "Cancelar enrolamiento",
-                    resource: r,
-                    path: `/enrollments/${id(selected.id)}/cancel`,
-                    method: "POST",
-                  })
+                  actionForm(
+                    "Revocar credencial",
+                    [
+                      {
+                        key: "reason",
+                        label: "Motivo de revocación",
+                        required: true,
+                        min: 3,
+                        max: 255,
+                      },
+                    ],
+                    `/credentials/${id(selected.id)}/revoke`,
+                  )
                 }
               />
             )}
+            {canWrite && r.key === "devices" && (
+              <>
+                <Button
+                  title="Rotar clave del dispositivo"
+                  secondary
+                  onPress={() =>
+                    prepare({
+                      title:
+                        "Rotar clave: el dispositivo deberá actualizar su configuración",
+                      resource: r,
+                      path: `/devices/${id(selected.id)}/rotate-key`,
+                      method: "POST",
+                      onSuccess: successSecret,
+                    })
+                  }
+                />
+              </>
+            )}
+            {r.key === "employees" &&
+              ["ADMIN", "SEGURIDAD"].includes(session.user.role) &&
+              !uncertain && (
+                <>
+                  <Button
+                    title="Asignar rol físico"
+                    onPress={() =>
+                      setForm({
+                        title: "Asignar rol físico",
+                        fields: [
+                          {
+                            key: "roleId",
+                            label: "Rol físico",
+                            type: "id",
+                            reference: "roles",
+                            required: true,
+                          },
+                        ],
+                        submit: (body) =>
+                          prepare({
+                            title: "Asignar rol físico",
+                            resource: { ...r, write: ["ADMIN", "SEGURIDAD"] },
+                            path: `/employees/${id(selected.id)}/roles/${id(body.roleId)}`,
+                            method: "POST",
+                          }),
+                      })
+                    }
+                  />
+                  {Array.isArray(selected.roles) &&
+                    selected.roles.map((physicalRole: Row) => (
+                      <Button
+                        key={String(physicalRole.id)}
+                        title={`Quitar rol: ${String(physicalRole.name ?? physicalRole.code)}`}
+                        secondary
+                        onPress={() =>
+                          prepare({
+                            title: `Quitar rol físico ${String(physicalRole.name ?? physicalRole.code)}`,
+                            resource: { ...r, write: ["ADMIN", "SEGURIDAD"] },
+                            path: `/employees/${id(selected.id)}/roles/${id(physicalRole.id)}`,
+                            method: "DELETE",
+                          })
+                        }
+                      />
+                    ))}
+                </>
+              )}
+            {canWrite && r.key === "users" && (
+              <Button
+                title="Cambiar contraseña"
+                secondary
+                onPress={() =>
+                  actionForm(
+                    "Cambiar contraseña",
+                    [
+                      {
+                        key: "newPassword",
+                        label: "Nueva contraseña",
+                        type: "password",
+                        required: true,
+                        min: 10,
+                        max: 200,
+                      },
+                    ],
+                    `/users/${id(selected.id)}/password`,
+                    "PUT",
+                  )
+                }
+              />
+            )}
+            {canWrite &&
+              r.key === "enrollments" &&
+              selected.status === "PENDIENTE" && (
+                <Button
+                  title="Cancelar enrolamiento"
+                  secondary
+                  onPress={() =>
+                    prepare({
+                      title: "Cancelar enrolamiento",
+                      resource: r,
+                      path: `/enrollments/${id(selected.id)}/cancel`,
+                      method: "POST",
+                    })
+                  }
+                />
+              )}
+          </View>
         </Sheet>
       )}
       {form && !pending && (
@@ -2005,6 +2009,21 @@ function makeStyles(color: Colors) {
       borderColor: color.border,
       flexShrink: 0,
     },
+    detailActionRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    detailRecordActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingTop: spacing.lg,
+      borderTopWidth: 1,
+      borderColor: color.border,
+    },
     detailsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
     detailCell: {
       flexBasis: "46%",
@@ -2042,6 +2061,8 @@ function makeStyles(color: Colors) {
     },
     button: {
       alignSelf: "flex-start",
+      maxWidth: "100%",
+      flexShrink: 1,
       flexDirection: "row",
       gap: spacing.sm,
       minHeight: 44,
