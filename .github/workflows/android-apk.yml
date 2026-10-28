@@ -1,0 +1,91 @@
+name: Build NexAccess Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/android-apk-build]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexaccess-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+  EXPO_PUBLIC_API_URL: https://nexaccess.rattenkoenig.net/api/v1
+  CI: "1"
+
+jobs:
+  apk:
+    name: APK instalable de prueba
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Cache de Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Instalar dependencias compatibles
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Pruebas
+        run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Generar Android con Expo CNG
+        run: npx expo prebuild --platform android --no-install
+      - name: Compilar release con firma de prueba
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g'
+      - name: Verificar APK y JavaScript incluido
+        run: |
+          set -euo pipefail
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$build_tools/apksigner" verify --verbose --print-certs "$apk"
+          unzip -Z1 "$apk" | grep -Fx 'assets/index.android.bundle'
+          mkdir -p ../artifacts
+          cp "$apk" ../artifacts/NexAccess-prueba.apk
+          "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
+          cd ../artifacts
+          sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" > BUILD.txt
+      - name: Publicar APK descargable
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexAccess-APK-prueba
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Resumen de descarga
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          printf '## NexAccess APK de prueba\n\n[Descargar APK y suma SHA-256](%s)\n\nIncluye JavaScript y usa la API pública; no necesita Metro. Firma provisional, no apta para Play Store.\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
