@@ -1,8 +1,14 @@
 import { Platform } from "react-native";
 import { Row } from "./client";
 import { reportHtml } from "./reports";
-export async function exportPdf(csv: string, title: string, query: Row) {
-  const html = reportHtml(csv, title, query);
+import { CompanyBranding } from "./company";
+export async function exportPdf(
+  csv: string,
+  title: string,
+  query: Row,
+  branding?: CompanyBranding,
+) {
+  const html = reportHtml(csv, title, query, branding);
   if (Platform.OS === "web") {
     const frame = document.createElement("iframe");
     frame.title = "Reporte PDF de NexAccess";
@@ -16,8 +22,10 @@ export async function exportPdf(csv: string, title: string, query: Row) {
       border: "0",
     });
     await new Promise<void>((resolve, reject) => {
-      frame.onload = () => {
+      frame.onload = async () => {
         try {
+          const images = Array.from(frame.contentDocument?.images ?? []);
+          await Promise.all(images.map((image) => image.decode()));
           frame.contentWindow?.focus();
           frame.contentWindow?.print();
           resolve();

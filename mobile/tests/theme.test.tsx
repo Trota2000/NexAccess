@@ -1,7 +1,7 @@
-jest.setTimeout(20000);
 import { fireEvent, render, screen, act } from "@testing-library/react-native";
 import { ThemeToggle, setTheme } from "../src/api/Theme";
 import CalendarField from "../src/api/CalendarField";
+jest.setTimeout(20000);
 afterEach(async () => {
   await act(async () => setTheme("light"));
 });

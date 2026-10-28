@@ -131,7 +131,7 @@ describe.each(["light", "dark"] as const)(
     afterEach(() => {
       global.fetch = originalFetch;
     });
-    async function login() {
+    async function login(openEmployees = true) {
       await render(<ApiApp />);
       await fireEvent.changeText(
         screen.getByLabelText("Usuario"),
@@ -144,20 +144,35 @@ describe.each(["light", "dark"] as const)(
       await fireEvent.press(
         screen.getByRole("button", { name: "Iniciar sesión" }),
       );
-      await screen.findByText("Ana Vera");
-    await waitFor(() => expect(screen.queryByLabelText("Cargando proceso")).toBeNull());
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Dashboard" }).props[
+            "aria-current"
+          ],
+        ).toBe("page"),
+      );
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+      );
+      if (openEmployees) {
+        await fireEvent.press(
+          screen.getByRole("button", { name: "Empleados" }),
+        );
+        await screen.findByText("Ana Vera");
+      }
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Cargando proceso")).toBeNull(),
+      );
     }
     test("real login has no role selector or registration; obtains role from me", async () => {
-      await login();
+      await login(false);
       expect(calls.slice(0, 2).map((c) => c.path)).toEqual([
         "/auth/login",
         "/auth/me",
       ]);
       expect(screen.queryByText("Perfil de demostración")).toBeNull();
       expect(
-        screen.getByRole("button", { name: "Empleados" }).props[
-          "aria-current"
-        ],
+        screen.getByRole("button", { name: "Dashboard" }).props["aria-current"],
       ).toBe("page");
       expect(screen.queryByText("Registrarse")).toBeNull();
       expect(

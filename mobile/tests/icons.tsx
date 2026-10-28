@@ -36,3 +36,7 @@ export const LayoutDashboard = View,
   Layers = View,
   Moon = View,
   Sun = View;
+
+export const Building2 = View,
+  Upload = View,
+  Trash2 = View;

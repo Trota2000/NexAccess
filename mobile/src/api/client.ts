@@ -199,6 +199,8 @@ export class ApiClient {
       anonymous?: boolean;
       candidateToken?: string;
       csv?: boolean;
+      formData?: FormData;
+      binary?: boolean;
     } = {},
   ): Promise<unknown> {
     if (!/^\/[a-z0-9/-]+$/.test(path))
@@ -255,6 +257,17 @@ export class ApiClient {
         "SESSION_EXPIRED",
       );
     }
+    if (
+      (options.formData &&
+        (operation.id !== "empresa.logo.upload" || options.body)) ||
+      (operation.id === "empresa.logo.upload" && !options.formData) ||
+      (options.binary && (operation.id !== "empresa.logo.get" || options.csv))
+    )
+      throw new ApiError(
+        "Formato de solicitud no permitido para esta operación.",
+        400,
+        "INVALID_BODY",
+      );
     const version = this.epoch;
     const controller = new AbortController();
     this.pending.add(controller);
@@ -277,13 +290,47 @@ export class ApiClient {
           credentials: "omit",
           redirect: "error",
           headers: {
-            Accept: options.csv ? "text/csv" : "application/json",
+            Accept: options.binary
+              ? "image/png, image/jpeg"
+              : options.csv
+                ? "text/csv"
+                : "application/json",
             ...(options.body ? { "Content-Type": "application/json" } : {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+          ...(options.formData
+            ? { body: options.formData }
+            : options.body
+              ? { body: JSON.stringify(options.body) }
+              : {}),
         },
       );
+      if (options.binary && response.ok) {
+        const contentType = (response.headers.get("content-type") ?? "")
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+        if (!["image/png", "image/jpeg"].includes(contentType))
+          throw new ApiError(
+            "El servidor no devolvió un logotipo PNG o JPEG.",
+            0,
+            "CONTRACT_ERROR",
+          );
+        const blob = await response.blob();
+        if (version !== this.epoch)
+          throw new ApiError(
+            "La sesión cambió; se descartó la imagen.",
+            0,
+            "STALE_REQUEST",
+          );
+        if (!blob.size || blob.size > 2 * 1024 * 1024)
+          throw new ApiError(
+            "El logotipo debe pesar como máximo 2 MB.",
+            0,
+            "CONTRACT_ERROR",
+          );
+        return blob;
+      }
       const text = await response.text();
       if (version !== this.epoch)
         throw new ApiError(

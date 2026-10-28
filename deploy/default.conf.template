@@ -9,6 +9,8 @@ server {
     add_header Referrer-Policy no-referrer always;
 
     location /api/ {
+        # Logo max 2 MiB plus multipart framing; backend still enforces its file limit.
+        client_max_body_size 3m;
         proxy_pass $api_origin$request_uri;
         proxy_set_header Host $proxy_host;
         proxy_ssl_server_name on;
