@@ -15,6 +15,8 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  StyleProp,
+  ViewStyle,
   Switch,
   Text,
   TextInput,
@@ -135,12 +137,14 @@ function Button({
   disabled = false,
   secondary = false,
   icon,
+  style,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   secondary?: boolean;
   icon?: LucideIcon;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { color, styles: s } = useDesign(makeStyles);
 
@@ -181,6 +185,7 @@ function Button({
           backgroundColor: color.errorBg,
           borderColor: color.error,
         },
+        style,
         (disabled || pressed) && { opacity: 0.55 },
       ]}
     >
@@ -772,6 +777,25 @@ function Workspace({
   const data = loadedKey === requestKey ? storedData : emptyPage;
   const busy = fetching || loadedKey !== requestKey;
   const { width } = useWindowDimensions();
+  const [detailActionWidth, setDetailActionWidth] = useState(0);
+  const queryColumns = detailActionWidth < 540 ? 1 : 2;
+  const recordColumns = detailActionWidth < 420 ? 1 : 3;
+  const queryButtonStyle: StyleProp<ViewStyle> = [
+    s.detailUniformButton,
+    {
+      width: detailActionWidth
+        ? (detailActionWidth - 1 - spacing.sm * (queryColumns - 1)) / queryColumns
+        : "100%",
+    },
+  ];
+  const recordButtonStyle: StyleProp<ViewStyle> = [
+    s.detailUniformButton,
+    {
+      width: detailActionWidth
+        ? (detailActionWidth - 1 - spacing.sm * (recordColumns - 1)) / recordColumns
+        : "100%",
+    },
+  ];
   const canWrite = r.write.includes(session.user.role) && !uncertain;
   const [transition, setTransition] = useState(false);
   const transitionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -1491,9 +1515,16 @@ function Workspace({
               Esperando al lector. Actualización automática cada 5 segundos.
             </Text>
           )}
-          <View testID="nx-detail-related-actions" style={s.detailActionRow}>
+          <View
+            testID="nx-detail-related-actions"
+            style={s.detailActionRow}
+            onLayout={(event) =>
+              setDetailActionWidth(event.nativeEvent.layout.width)
+            }
+          >
             {relatedFlows(r.key, selected, session.user.role).map((flow) => (
               <Button
+                style={queryButtonStyle}
                 key={flow.title}
                 title={flow.title}
                 secondary
@@ -1505,6 +1536,7 @@ function Workspace({
           <View testID="nx-detail-record-actions" style={s.detailRecordActions}>
             {canWrite && r.edit && (
               <Button
+                style={recordButtonStyle}
                 title="Editar registro"
                 onPress={() => createOrEdit(selected)}
               />
@@ -1514,6 +1546,7 @@ function Workspace({
               !(r.key === "credentials" && selected.revokedAt) &&
               !(r.key === "users" && selected.id === session.user.id) && (
                 <Button
+                  style={recordButtonStyle}
                   title={selected.isActive ? "Desactivar" : "Activar"}
                   secondary
                   disabled={writing}
@@ -1532,6 +1565,7 @@ function Workspace({
               )}
             {canWrite && r.key === "credentials" && !selected.revokedAt && (
               <Button
+                style={recordButtonStyle}
                 title="Revocar definitivamente"
                 secondary
                 onPress={() =>
@@ -1554,6 +1588,7 @@ function Workspace({
             {canWrite && r.key === "devices" && (
               <>
                 <Button
+                  style={recordButtonStyle}
                   title="Rotar clave del dispositivo"
                   secondary
                   onPress={() =>
@@ -1574,6 +1609,7 @@ function Workspace({
               !uncertain && (
                 <>
                   <Button
+                    style={recordButtonStyle}
                     title="Asignar rol físico"
                     onPress={() =>
                       setForm({
@@ -1600,6 +1636,7 @@ function Workspace({
                   {Array.isArray(selected.roles) &&
                     selected.roles.map((physicalRole: Row) => (
                       <Button
+                        style={recordButtonStyle}
                         key={String(physicalRole.id)}
                         title={`Quitar rol: ${String(physicalRole.name ?? physicalRole.code)}`}
                         secondary
@@ -1617,6 +1654,7 @@ function Workspace({
               )}
             {canWrite && r.key === "users" && (
               <Button
+                style={recordButtonStyle}
                 title="Cambiar contraseña"
                 secondary
                 onPress={() =>
@@ -1642,6 +1680,7 @@ function Workspace({
               r.key === "enrollments" &&
               selected.status === "PENDIENTE" && (
                 <Button
+                  style={recordButtonStyle}
                   title="Cancelar enrolamiento"
                   secondary
                   onPress={() =>
@@ -2009,6 +2048,7 @@ function makeStyles(color: Colors) {
       borderColor: color.border,
       flexShrink: 0,
     },
+    detailUniformButton: { minHeight: 56, alignSelf: "stretch", flexShrink: 0 },
     detailActionRow: {
       flexDirection: "row",
       flexWrap: "wrap",
