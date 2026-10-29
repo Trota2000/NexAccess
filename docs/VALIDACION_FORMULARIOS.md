@@ -18,3 +18,31 @@ En el backend revisado (`sof2702/NexAccess@f4dc357`), `EmployeeRequest` valida l
 ## Verificación
 
 Las pruebas cubren escritura y pegado de caracteres inválidos, formatos de correo, teléfonos locales/internacionales, ceros iniciales, nombres con Unicode, campos opcionales, RUC y bloqueo de escrituras inválidas en crear/editar empleado y datos empresariales. Los casos de interfaz se ejecutan en temas claro y oscuro con datos sintéticos.
+
+Resultado de la entrega del 29/10/2026: 61 pruebas de integración, 32 web y 82 móvil aprobadas (175 en total). TypeScript, ESLint y exportación Expo web correctos; las matrices web/móvil de [GitHub Actions](https://github.com/Trota2000/NexAccess/actions/runs/40963039218) aprobaron el commit `005f08f`. También se revisó el formulario en navegador con el fixture local: rechazo de caracteres, mensajes por campo, corrección y paso a confirmación. No se escribieron datos en producción.
+
+Desde la raíz del repositorio, después de instalar las dependencias de ambas apps:
+
+```powershell
+node integration/sync.cjs --check
+node --test integration/tests/*.test.cjs
+cd web
+npm test
+npm run typecheck
+npm run lint
+npx expo export --platform web
+cd ../mobile
+npm test
+npm run typecheck
+npm run lint
+```
+
+## Guía para el operador
+
+Ejemplos válidos: documento `00123456`, nombre `María José`, apellido `O’Connor-Pérez`, correo `nombre@ficticio.net`, teléfono `+595 (981) 123456` y RUC `80000000-1`. Son datos ilustrativos; no se comprueba su existencia ni titularidad.
+
+Para corregir un registro previo, abrir su detalle y elegir **Editar registro**. Si contiene un dato incompatible, el formulario señala el campo y exige corregirlo antes de confirmar. Las nuevas reglas no borran ni reescriben registros existentes. Si un formato legítimo no está contemplado, acordar la excepción con backend antes de cambiar datos para que pasen la validación.
+
+## Despliegue
+
+Los cambios de `web/` e `integration/` en `main` activan `.github/workflows/deploy-web.yml`: verifica el frontend, publica `ghcr.io/trota2000/nexaccess-web` y ejecuta el despliegue mediante `[self-hosted, nexaccess-web]`. La documentación por sí sola no cambia la configuración del servidor. Después de desplegar, comprobar la nueva versión y la conexión desde el login; no crear registros reales solo para probar validaciones.
