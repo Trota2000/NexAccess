@@ -410,6 +410,88 @@ describe.each(["light", "dark"] as const)(
       );
       await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
     }
+    test("employee form rejects invalid characters and blocks malformed email before any write", async () => {
+      await login();
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Crear empleado" }),
+      );
+      await fireEvent.changeText(screen.getByLabelText("Documento"), "123abc");
+      expect(screen.getByLabelText("Documento").props.value).toBe("");
+      expect(screen.getByLabelText("Documento").props["aria-invalid"]).toBe(
+        true,
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Documento"),
+        "00123456",
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Nombres"),
+        "María José",
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Apellidos"),
+        "O’Connor-Pérez",
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Teléfono"),
+        "0981letras",
+      );
+      expect(screen.getByLabelText("Teléfono").props.value).toBe("");
+      await fireEvent.changeText(
+        screen.getByLabelText("Teléfono"),
+        "+595 (981) 123456",
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Correo"),
+        "nombre@gmail",
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      expect(screen.getByLabelText("Correo").props["aria-invalid"]).toBe(true);
+      expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+      expect(
+        calls.filter((c) => c.method === "POST" && c.path === "/employees"),
+      ).toHaveLength(0);
+      await fireEvent.changeText(
+        screen.getByLabelText("Correo"),
+        "nombre@ficticio.net",
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
+      await screen.findByText("Registro guardado · ID 41");
+      expect(
+        calls.find((c) => c.method === "POST" && c.path === "/employees")?.body,
+      ).toEqual({
+        documentNumber: "00123456",
+        firstName: "María José",
+        lastName: "O’Connor-Pérez",
+        email: "nombre@ficticio.net",
+        phone: "+595 (981) 123456",
+      });
+    });
+    test("employee edit validates existing malformed data without sending a request", async () => {
+      await login();
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Ver detalle de Ana Vera" }),
+      );
+      await fireEvent.press(
+        await screen.findByRole("button", { name: "Editar registro" }),
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Correo"),
+        "texto sin arroba",
+      );
+      await fireEvent(screen.getByLabelText("Correo"), "blur");
+      expect(screen.getByLabelText("Correo").props["aria-invalid"]).toBe(true);
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+      expect(calls.filter((c) => c.method === "PUT")).toHaveLength(0);
+    });
     test("employee create sends the backend DTO and shows its server-assigned ID", async () => {
       await login();
       await draftEmployee();

@@ -74,6 +74,8 @@ import {
   checkReportSize,
   display,
   Field,
+  fieldError,
+  inputError,
   labels,
   pageOf,
   queryFor,
@@ -413,17 +415,27 @@ function Input({
   onChange,
   client,
   filter = false,
+  error = "",
 }: {
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
   client: ApiClient;
   filter?: boolean;
+  error?: string;
 }) {
   const { color, styles: s } = useDesign(makeStyles);
 
   const [lookup, setLookup] = useState(false);
   const [caption, setCaption] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [rejected, setRejected] = useState("");
+  const invalid =
+    rejected ||
+    error ||
+    (touched
+      ? fieldError({ ...field, required: !filter && field.required }, value)
+      : "");
   if (field.type === "boolean")
     return (
       <View style={[s.row, { justifyContent: "space-between" }]}>
@@ -491,8 +503,17 @@ function Input({
           ) : (
             <TextInput
               accessibilityLabel={field.label}
+              aria-invalid={!!invalid}
               value={String(value ?? "")}
-              onChangeText={onChange}
+              onChangeText={(next) => {
+                const message = inputError(field, next);
+                setRejected(message);
+                if (!message) onChange(next);
+              }}
+              onBlur={() => {
+                setTouched(true);
+                setRejected("");
+              }}
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry={field.type === "password"}
@@ -501,7 +522,11 @@ function Input({
                   ? "number-pad"
                   : field.key === "email"
                     ? "email-address"
-                    : "default"
+                    : field.format === "phone"
+                      ? "phone-pad"
+                      : field.format === "document" || field.format === "taxId"
+                        ? "number-pad"
+                        : "default"
               }
               maxLength={field.type === "id" ? 16 : (field.max ?? 500)}
               placeholder={field.type === "time" ? "08:00" : undefined}
@@ -535,6 +560,14 @@ function Input({
           </>
         )}
       </View>
+      {!!invalid && (
+        <Text accessibilityRole="alert" style={s.error}>
+          {invalid}
+        </Text>
+      )}
+      {!invalid && !!field.hint && !filter && (
+        <Text style={s.muted}>{field.hint}</Text>
+      )}
     </View>
   );
 }
@@ -611,6 +644,9 @@ function EditForm({
     ),
   );
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   return (
     <Sheet
       title={form.title}
@@ -621,6 +657,17 @@ function EditForm({
           onPress={() => {
             try {
               setError("");
+              const invalid = Object.fromEntries(
+                form.fields
+                  .filter((f) => !form.edit || !f.createOnly)
+                  .map((f) => [f.key, fieldError(f, draft[f.key])])
+                  .filter(([, message]) => !!message),
+              );
+              setValidationErrors(invalid);
+              if (Object.keys(invalid).length) {
+                setError("Revisá los campos señalados antes de continuar.");
+                return;
+              }
               form.submit(bodyFor(form.fields, draft, form.edit));
             } catch (e) {
               setError(errorText(e));
@@ -656,8 +703,10 @@ function EditForm({
                 key={f.key}
                 field={f}
                 value={draft[f.key]}
+                error={validationErrors[f.key] || fieldErrors[f.key]}
                 client={client}
-                onChange={(value) =>
+                onChange={(value) => {
+                  setValidationErrors((errors) => ({ ...errors, [f.key]: "" }));
                   setDraft((d) => {
                     const next = { ...d, [f.key]: value };
                     if (
@@ -670,14 +719,9 @@ function EditForm({
                       if (value === "EMPLEADO") next.mobileAccessEnabled = true;
                     }
                     return next;
-                  })
-                }
+                  });
+                }}
               />
-              {fieldErrors[f.key] && (
-                <Text accessibilityRole="alert" style={s.error}>
-                  {fieldErrors[f.key]}
-                </Text>
-              )}
             </View>
           ))}
       </View>
