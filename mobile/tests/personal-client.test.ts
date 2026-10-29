@@ -319,6 +319,7 @@ test("installationId survives logout and is reused by the next login", async () 
   );
   await first.login("empleado", "password");
   await first.logout();
+  expect(await first.getInstallationId()).toBe(id);
   await new PersonalClient(
     "https://example.test/api/v1",
     store,

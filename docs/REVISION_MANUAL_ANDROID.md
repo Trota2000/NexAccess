@@ -1,5 +1,7 @@
 # Revisión del manual Android y adaptación del frontend
 
+Esta revisión es histórica, correspondiente a f4dc357. El backend posterior 4bfe0b2 añade vinculación por instalación, comprobaciones físicas y logout mediante refresh token rotado. Consultar [la adaptación vigente](INTEGRACION_MANUAL_V1.md) antes de considerar pendientes los puntos de esta revisión.
+
 Fecha: 29/10/2026. Manual recibido: NexAccess, integración Android v1.0 MVP. Código revisado: [sof2702/NexAccess, f4dc357](https://github.com/sof2702/NexAccess/tree/f4dc357d2bd3108409636a292cdce124a60504c3).
 
 ## Resultado

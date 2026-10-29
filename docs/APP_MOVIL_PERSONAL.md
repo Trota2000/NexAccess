@@ -10,7 +10,7 @@ npm ci
 npx expo start --go
 ```
 
-Usar Expo Go compatible con SDK 57 para revisar las pantallas. La URL nativa predeterminada es `https://nexaccess.rattenkoenig.net/api/v1`. Se puede cambiar mediante `EXPO_PUBLIC_PERSONAL_API_URL` en `.env.local`; reiniciar Expo después. No poner secretos en variables EXPO_PUBLIC.
+Usar Expo Go compatible con SDK 57 para revisar las pantallas. La URL nativa predeterminada es `https://nx.rattenkoenig.net/api/v1`. Se puede cambiar mediante `EXPO_PUBLIC_PERSONAL_API_URL` en `.env.local`; reiniciar Expo después. No poner secretos en variables EXPO_PUBLIC. Ver el [contrato vigente y flujo de instalación](INTEGRACION_MANUAL_V1.md).
 
 El login personal consume los endpoints móviles implementados por el backend. Hace falta una cuenta con empleado activo y mobileAccessEnabled=true; no se reemplaza con el login administrativo. La apertura real NFC/HCE requiere un módulo Android y una nueva compilación; no está implementada en esta entrega. Ver [revisión del manual y pendientes](REVISION_MANUAL_ANDROID.md).
 
@@ -41,7 +41,7 @@ En el navegador los secretos se guardan únicamente en memoria; la persistencia 
 
 El fixture localhost no es accesible desde un teléfono físico. Para probar con Expo Go usar una API HTTPS de pruebas accesible desde el teléfono. Quitar el archivo .env.local de prueba antes de volver al servidor real.
 
-## Contrato adaptado al backend f4dc357 (29/10/2026)
+## Contrato personal compatible con el backend 4bfe0b2
 
 | Método | Ruta relativa a /api/v1 | Datos |
 |---|---|---|
@@ -70,12 +70,12 @@ Errores: JSON problem con detail y code. Login 404/405/501 informa que falta hab
 - Solo una revocación explícita 401/403 durante refresh invalida la sesión y solicita deshabilitar NFC.
 - Cerrar sesión deshabilita primero la credencial local, elimina la sesión y pide revocación remota. Si no hay red se conserva únicamente el trabajo de revocación en almacenamiento seguro y se informa su estado pendiente. HCE no debe acceder a ese material.
 - Se reintenta la revocación al restaurar o antes de un nuevo login. No se inicia otra sesión local mientras siga pendiente, evitando sobrescribir ese trabajo.
-- El backend debe admitir logout idempotente mediante autorización móvil incluso si venció el accessToken, y definir la relación sesión/instalación/credencial. sessionId solo no es autorización.
-- Si había un refresh en vuelo al cerrar sesión, la UI deja de mostrar una sesión activa, se deshabilita NFC y se utiliza el token rotado más reciente para logout. Ver los pendientes del backend sobre pérdida de respuesta y logout con un token ya consumido; no se garantiza una revocación remota a partir de un 204 ambiguo.
+- El backend revisado admite logout idempotente con refresh token actual o uno previamente rotado y registrado; sessionId solo no es autorización.
+- Si había un refresh en vuelo al cerrar sesión, la UI deja de mostrar una sesión activa, se deshabilita NFC y se utiliza el token rotado más reciente para logout. El backend puede localizar la sesión mediante tokens rotados. La recuperación de una renovación cuya respuesta se pierde continúa pendiente.
 
 ## Administración web integrada
 
-El formulario de cuentas ofrece EMPLEADO (solo app NFC) o perfiles administrativos con acceso web y opción móvil. El canal móvil exige empleado vinculado. El detalle permite administrar los flags mediante PUT /users/{id}/access, respetando que el backend no permite cambiar el perfil ni vincular otro empleado desde esa operación. Credenciales incluye Emitir credencial digital con generación del código en servidor y respuesta enmascarada. Estos cambios requieren revisión/merge del frontend web; no se desplegaron automáticamente.
+El formulario de cuentas ofrece EMPLEADO (solo app NFC) o perfiles administrativos con acceso web y opción móvil. El canal móvil exige empleado vinculado. El detalle permite administrar los flags mediante PUT /users/{id}/access, respetando que el backend no permite cambiar el perfil ni vincular otro empleado desde esa operación. Credenciales incluye Emitir credencial digital con generación del código en servidor y respuesta enmascarada. El nuevo contrato exige también installationId: el empleado inicia sesión en el APK, copia el identificador desde Mi tarjeta y se lo entrega al administrador. La web valida el UUID y lo envía junto a name/expiresAt; el servidor verifica la instalación y su empleado. Los registros/enrolamientos manuales se limitan a tarjetas físicas; la emisión digital usa su operación dedicada.
 
 ## NFC: alcance real
 

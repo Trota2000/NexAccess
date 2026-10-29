@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
 import {
   Pressable,
   RefreshControl,
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
+  Copy,
 } from "lucide-react-native";
 import { useDesign } from "../api/Theme";
 import { usePersonal } from "./SessionProvider";
@@ -49,6 +51,26 @@ export default function PersonalCard() {
   const [open, setOpen] = useState(false);
   const [choosingCard, setChoosingCard] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [installation, setInstallation] = useState("");
+  const [installationError, setInstallationError] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void client
+      .getInstallationId()
+      .then((value) => {
+        if (active) setInstallation(value);
+      })
+      .catch(() => {
+        if (active)
+          setInstallationError(
+            "No se pudo leer la instalación. Volvé a abrir la app para intentarlo nuevamente.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [client]);
   const load = useCallback(
     async (isActive: () => boolean) => {
       setBusy(true);
@@ -270,6 +292,41 @@ export default function PersonalCard() {
             </>
           )
         )}
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>Vincular este teléfono</Text>
+          <Text style={s.muted}>
+            Copiá este identificador y entregalo al administrador para que emita
+            tu tarjeta. Mantené la sesión iniciada durante la vinculación.
+          </Text>
+          {!!installation && (
+            <Text
+              selectable
+              accessibilityLabel="Identificador de instalación"
+              style={s.body}
+            >
+              {installation}
+            </Text>
+          )}
+          {!!installationError && <Notice error>{installationError}</Notice>}
+          <Action
+            title={copied ? "Identificador copiado" : "Copiar identificador"}
+            icon={Copy}
+            secondary
+            disabled={!installation}
+            onPress={() => {
+              void Clipboard.setStringAsync(installation)
+                .then(() => {
+                  setCopied(true);
+                  setInstallationError("");
+                })
+                .catch(() =>
+                  setInstallationError(
+                    "No se pudo copiar. Mantené pulsado el identificador para copiarlo manualmente.",
+                  ),
+                );
+            }}
+          />
+        </View>
         <View style={s.card}>
           <View style={s.row}>
             <Smartphone size={20} color={color.primary} />

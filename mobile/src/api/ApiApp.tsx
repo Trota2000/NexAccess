@@ -72,6 +72,7 @@ import {
   accountAccessBody,
   bodyFor,
   checkReportSize,
+  digitalCredentialFields,
   display,
   Field,
   fieldError,
@@ -1332,10 +1333,8 @@ function Workspace({
                     onPress={() =>
                       setForm({
                         title: "Emitir credencial digital",
-                        fields: r.fields.filter((f) =>
-                          ["employeeId", "name", "expiresAt"].includes(f.key),
-                        ),
-                        hint: "El servidor genera el código. La apertura con el teléfono requiere completar la integración NFC nativa y el protocolo del lector.",
+                        fields: digitalCredentialFields,
+                        hint: "El empleado debe iniciar sesión en la app y copiar su identificador de instalación. El servidor comprueba su vinculación y genera el código; la apertura NFC nativa sigue pendiente.",
                         submit: (body) =>
                           prepare({
                             title: "Emitir credencial digital",
@@ -1343,6 +1342,7 @@ function Workspace({
                             path: `/credentials/digital/${id(body.employeeId)}`,
                             method: "POST",
                             body: {
+                              installationId: body.installationId,
                               name: body.name,
                               expiresAt: body.expiresAt,
                             },

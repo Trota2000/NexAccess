@@ -78,6 +78,10 @@ export class PersonalClient {
       throw error;
     }));
   }
+  // Installation identifier only; never exposes refresh/access/NFC secrets.
+  getInstallationId(): Promise<string> {
+    return this.installationId();
+  }
   private async raw(
     path: string,
     body?: unknown,

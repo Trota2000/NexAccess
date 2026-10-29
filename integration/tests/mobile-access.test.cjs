@@ -97,5 +97,5 @@ test("routes match current backend PUT access and server-generated digital issua
   assert.equal(resolveOperation("/users/101/access", "PATCH"), undefined);
   const digital = resolveOperation("/credentials/digital/42", "POST");
   assert.deepEqual(digital.roles, ["ADMIN", "SEGURIDAD"]);
-  assert.deepEqual(digital.bodyKeys, ["name", "expiresAt"]);
+  assert.deepEqual(digital.bodyKeys, ["installationId", "name", "expiresAt"]);
 });

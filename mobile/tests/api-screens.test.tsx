@@ -317,6 +317,17 @@ describe.each(["light", "dark"] as const)(
       await fireEvent.press(
         screen.getByRole("button", { name: "Revisar cambios" }),
       );
+      expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+      expect(calls.some((c) => c.path === "/credentials/digital/12")).toBe(
+        false,
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Instalación Android"),
+        "f534312a-12cc-47dc-9d53-34ef801c99d7",
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
       await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
       await waitFor(() =>
         expect(calls.some((c) => c.path === "/credentials/digital/12")).toBe(
@@ -325,7 +336,11 @@ describe.each(["light", "dark"] as const)(
       );
       expect(
         calls.find((c) => c.path === "/credentials/digital/12")?.body,
-      ).toEqual({ name: null, expiresAt: null });
+      ).toEqual({
+        installationId: "f534312a-12cc-47dc-9d53-34ef801c99d7",
+        name: null,
+        expiresAt: null,
+      });
     });
     test("RRHH sees attendance and employees but not security or administrative modules", async () => {
       role = "RRHH";
