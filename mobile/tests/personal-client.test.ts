@@ -1,6 +1,10 @@
-import { PersonalClient, sessionKey } from "../src/personal/client";
+import {
+  PersonalClient,
+  sessionKey,
+  installationKey,
+} from "../src/personal/client";
 import { SecretStorage } from "../src/personal/storage";
-import { profile } from "../src/personal/types";
+import { profile, nfcCredentialPayload } from "../src/personal/types";
 
 function storage() {
   const data = new Map<string, string>();
@@ -31,11 +35,11 @@ const session = () => ({
   user,
 });
 const ownProfile = {
-  id: 42,
-  fullName: "Ana P�rez",
-  firstName: "Ana",
-  lastName: "P�rez",
-  documentNumber: "1234567",
+  userId: 7,
+  username: "empleado",
+  role: "EMPLEADO",
+  employeeId: 42,
+  fullName: "Ana Pérez",
   isActive: true,
 };
 function response(data: unknown, status = 200) {
@@ -62,6 +66,22 @@ const mockTransport = (
   fn: (url: string, init?: RequestInit) => Promise<Response>,
 ) => jest.fn(fn) as unknown as jest.MockedFunction<typeof fetch>;
 
+test("NFC payload follows the current C# DTO rather than the manual field name", () => {
+  expect(
+    nfcCredentialPayload.safeParse({
+      credentialId: 25,
+      credential: "SYNTHETIC-NOT-A-REAL-CODE",
+      expiresAt: null,
+    }).success,
+  ).toBe(true);
+  expect(
+    nfcCredentialPayload.safeParse({
+      credentialId: 25,
+      credentialCode: "SYNTHETIC-NOT-A-REAL-CODE",
+      expiresAt: null,
+    }).success,
+  ).toBe(false);
+});
 test("login preserves the exact password, stores only renewal material and rejects operator roles", async () => {
   const { store, data } = storage();
   const transport = mockTransport(async () => response(session()));
@@ -74,6 +94,7 @@ test("login preserves the exact password, stores only renewal material and rejec
   expect(JSON.parse(String(transport.mock.calls[0][1]?.body))).toEqual({
     username: "empleado",
     password: " clave exacta ",
+    installationId: "f534312a-12cc-47dc-9d53-34ef801c99d7",
   });
   expect(data.get(sessionKey)).not.toContain("access-secret");
   expect(data.get(sessionKey)).not.toContain("clave exacta");
@@ -220,7 +241,7 @@ test("offline logout disables NFC first, clears the session and retries remote r
   expect(client.getSnapshot().notice).toContain("pendiente");
   online = true;
   await client.flushLogout();
-  expect([...data.keys()]).toHaveLength(0);
+  expect([...data.keys()]).toEqual([installationKey]);
 });
 
 test("employee scope cannot be replaced with administrative routes or an employeeId filter", async () => {
@@ -266,9 +287,82 @@ test("a late refresh cannot restore a session after logout", async () => {
   );
   const restoring = restored.restore();
   while (!resolveRefresh) await Promise.resolve();
-  await restored.logout();
+  const closing = restored.logout();
+  while (restored.getSnapshot().user) await Promise.resolve();
+  expect(await store.get(sessionKey)).toBeNull();
   resolveRefresh(response(session()));
-  await restoring;
+  await Promise.all([restoring, closing]);
   expect(restored.getSnapshot().user).toBeNull();
   expect(await store.get(sessionKey)).toBeNull();
+  const call = transport.mock.calls.find(([url]) =>
+    String(url).endsWith("logout"),
+  );
+  expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+    refreshToken: "refresh-secret",
+  });
+});
+
+test("installationId survives logout and is reused by the next login", async () => {
+  const { store, data } = storage();
+  const id = "953c687c-20b2-4b0e-a7ca-c51c8abc1111";
+  data.set(installationKey, id);
+  const transport = mockTransport(async (url) =>
+    response(
+      url.endsWith("logout") ? undefined : session(),
+      url.endsWith("logout") ? 204 : 200,
+    ),
+  );
+  const first = new PersonalClient(
+    "https://example.test/api/v1",
+    store,
+    transport,
+  );
+  await first.login("empleado", "password");
+  await first.logout();
+  await new PersonalClient(
+    "https://example.test/api/v1",
+    store,
+    transport,
+  ).login("empleado", "password");
+  const logins = transport.mock.calls.filter(([url]) =>
+    String(url).endsWith("login"),
+  );
+  expect(
+    logins.map(([, init]) => JSON.parse(String(init?.body)).installationId),
+  ).toEqual([id, id]);
+});
+
+test("refresh and logout send the current backend DTO without sessionId", async () => {
+  const { store, data } = storage();
+  data.set(
+    sessionKey,
+    JSON.stringify({
+      api: "https://example.test/api/v1",
+      refreshToken: "old",
+      sessionId: "device-session",
+      user,
+    }),
+  );
+  const transport = mockTransport(async (url) =>
+    response(
+      url.endsWith("logout")
+        ? undefined
+        : { ...session(), refreshToken: "rotated" },
+      url.endsWith("logout") ? 204 : 200,
+    ),
+  );
+  const client = new PersonalClient(
+    "https://example.test/api/v1",
+    store,
+    transport,
+  );
+  await client.restore();
+  await client.logout();
+  const bodies = transport.mock.calls.map(([, init]) =>
+    JSON.parse(String(init?.body)),
+  );
+  expect(bodies).toEqual([
+    { refreshToken: "old" },
+    { refreshToken: "rotated" },
+  ]);
 });

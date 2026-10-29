@@ -26,8 +26,8 @@ export const nfc = {
       alwaysAvailable: false,
       reason:
         Platform.OS === "web"
-          ? "La vista web permite revisar el dise�o. NFC requiere la app Android y un lector compatible."
-          : "La integraci�n NFC nativa todav�a no est� instalada. Tu tarjeta a�n no puede abrir accesos desde este tel�fono.",
+          ? "La vista web permite revisar el diseño. NFC requiere la app Android y un lector compatible."
+          : "La integración NFC nativa todavía no está instalada. Tu tarjeta aún no puede abrir accesos desde este teléfono.",
     };
   },
   async setMode(mode: NfcMode) {

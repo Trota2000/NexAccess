@@ -113,10 +113,10 @@ export default function PersonalLogin() {
               />
             </View>
             <View>
-              <Text style={s.label}>Contrase�a</Text>
+              <Text style={s.label}>Contraseña</Text>
               <View style={{ justifyContent: "center" }}>
                 <TextInput
-                  accessibilityLabel="Contrase�a"
+                  accessibilityLabel="Contraseña"
                   value={password}
                   onChangeText={setPassword}
                   style={[s.input, { paddingRight: 56 }]}
@@ -131,7 +131,7 @@ export default function PersonalLogin() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={
-                    visible ? "Ocultar contrase�a" : "Mostrar contrase�a"
+                    visible ? "Ocultar contraseña" : "Mostrar contraseña"
                   }
                   onPress={() => setVisible(!visible)}
                   style={[s.iconButton, { position: "absolute", right: 4 }]}
@@ -148,14 +148,14 @@ export default function PersonalLogin() {
               <Notice error={!!error}>{error || notice}</Notice>
             )}
             <Action
-              title={busy ? "Iniciando sesi�n�" : "Iniciar sesi�n"}
+              title={busy ? "Iniciando sesión…" : "Iniciar sesión"}
               icon={LogIn}
               onPress={() => void login()}
               disabled={busy}
             />
             <Text style={s.muted}>
-              Tu sesi�n queda guardada en este tel�fono. Si necesit�s una
-              cuenta, contact� al administrador.
+              Tu sesión queda guardada en este teléfono. Si necesitás una
+              cuenta, contactá al administrador.
             </Text>
           </View>
         </ScrollView>

@@ -2,6 +2,9 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
+jest.mock("expo-crypto", () => ({
+  randomUUID: () => "f534312a-12cc-47dc-9d53-34ef801c99d7",
+}));
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
   Link: require("react-native").Text,

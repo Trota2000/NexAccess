@@ -14,7 +14,7 @@ function Routes() {
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
       {!ready || !preferencesReady ? (
         <View style={[s.root, { justifyContent: "center" }]}>
-          <Loading label="Preparando tu acceso�" />
+          <Loading label="Preparando tu acceso…" />
         </View>
       ) : (
         <Stack screenOptions={{ headerShown: false }}>

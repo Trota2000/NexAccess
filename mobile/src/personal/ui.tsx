@@ -94,7 +94,7 @@ export function Notice({
     </View>
   );
 }
-export function Loading({ label = "Cargando�" }: { label?: string }) {
+export function Loading({ label = "Cargando…" }: { label?: string }) {
   const { color, styles: s } = useDesign(styles);
   return (
     <View
@@ -157,7 +157,7 @@ export function Sheet({
   );
 }
 export function maskDocument(value: string) {
-  return value.length > 3 ? `���� ${value.slice(-3)}` : "����";
+  return value.length > 3 ? `•••• ${value.slice(-3)}` : "••••";
 }
 export function dateLabel(value: string | null) {
   return value
@@ -172,7 +172,7 @@ export function dateLabel(value: string | null) {
 export function message(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "No se pudo completar la operaci�n.";
+    : "No se pudo completar la operación.";
 }
 export function styles(c: Colors) {
   return StyleSheet.create({

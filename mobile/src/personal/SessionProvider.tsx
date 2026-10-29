@@ -20,7 +20,7 @@ const initialCapabilities: NfcCapabilities = {
   available: false,
   enabled: false,
   alwaysAvailable: false,
-  reason: "Comprobando compatibilidad NFC�",
+  reason: "Comprobando compatibilidad NFC…",
 };
 const defaultClient = () =>
   new PersonalClient(
@@ -79,7 +79,7 @@ export function SessionProvider({
           setCapabilities({
             ...initialCapabilities,
             reason:
-              "No se pudo comprobar NFC. Tu tarjeta no est� lista para presentar.",
+              "No se pudo comprobar NFC. Tu tarjeta no está lista para presentar.",
           });
       }
       await client.restore();
@@ -119,7 +119,7 @@ export function SessionProvider({
             !capabilities.alwaysAvailable
           )
             throw new Error(
-              "Este tel�fono no permite NFC con pantalla bloqueada o apagada.",
+              "Este teléfono no permite NFC con pantalla bloqueada o apagada.",
             );
           await nfc.setMode(mode);
           await preference("nfcMode", mode);
@@ -149,7 +149,7 @@ export function usePersonal() {
     notice:
       session.notice ||
       (__DEV__ && process.env.EXPO_PUBLIC_PERSONAL_PREVIEW === "1"
-        ? "Vista de prueba � datos ficticios � NFC no disponible"
+        ? "Vista de prueba · datos ficticios · NFC no disponible"
         : ""),
   };
 }

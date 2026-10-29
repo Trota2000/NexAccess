@@ -24,23 +24,28 @@ const user = {
 };
 const card = {
   id: 12,
-  name: "Credencial m�vil",
+  name: "Credencial móvil",
   type: "DIGITAL",
-  maskedCode: "���� A1B2",
+  maskedCode: "•••• A1B2",
   status: "ACTIVA",
   issuedAt: "2026-10-28T12:00:00Z",
   expiresAt: null,
 };
 const ownProfile = {
-  id: 42,
-  fullName: "Ana P�rez",
-  firstName: "Ana",
-  lastName: "P�rez",
-  documentNumber: "1234567",
+  userId: 1,
+  username: "ana",
+  role: "EMPLEADO",
+  employeeId: 42,
+  fullName: "Ana Pérez",
   isActive: true,
 };
 function setup(
-  overrides: { employeeId?: number; empty?: boolean; fail?: boolean } = {},
+  overrides: {
+    employeeId?: number;
+    empty?: boolean;
+    fail?: boolean;
+    profileUserId?: number;
+  } = {},
 ) {
   const values = new Map<string, string>();
   const transport = jest.fn(async (url: string) => {
@@ -54,7 +59,10 @@ function setup(
           user,
         }
       : url.endsWith("/me")
-        ? ownProfile
+        ? {
+            ...ownProfile,
+            userId: overrides.profileUserId ?? ownProfile.userId,
+          }
         : {
             items: overrides.empty
               ? []
@@ -66,7 +74,7 @@ function setup(
                       occurredAt: "2026-10-28T12:00:00Z",
                       result: "AUTORIZADO",
                       reason: "AUTHORIZED",
-                      areaName: "Recepci�n",
+                      areaName: "Recepción",
                       deviceCode: "PUERTA-01",
                     },
                   ]
@@ -114,10 +122,11 @@ test("personal card masks document, contains only personal controls and persists
       <PersonalCard />
     </SessionProvider>,
   );
-  expect(await screen.findByText("Ana P�rez")).toBeTruthy();
+  expect(await screen.findByText("Ana Pérez")).toBeTruthy();
   expect(screen.queryByText("1234567")).toBeNull();
+  expect(screen.getByText("Empleado · #42")).toBeTruthy();
   expect(screen.queryByText("Dashboard")).toBeNull();
-  expect(screen.getByText("Integraci�n NFC pendiente")).toBeTruthy();
+  expect(screen.getByText("Integración NFC pendiente")).toBeTruthy();
   await fireEvent.press(
     screen.getByRole("button", { name: "Modo NFC: Con pantalla desbloqueada" }),
   );
@@ -143,7 +152,7 @@ test("history renders the authenticated employee and filters without sending an 
       <PersonalHistory />
     </SessionProvider>,
   );
-  expect(await screen.findByText("Recepci�n")).toBeTruthy();
+  expect(await screen.findByText("Recepción")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Filtros" }));
   await fireEvent.press(screen.getByRole("radio", { name: "Rechazados" }));
   await fireEvent.press(
@@ -172,9 +181,24 @@ test("a response containing another employee is discarded before rendering", asy
       "El historial recibido no corresponde a tu cuenta.",
     ),
   ).toBeTruthy();
-  expect(screen.queryByText("Recepci�n")).toBeNull();
+  expect(screen.queryByText("Recepción")).toBeNull();
 });
 
+test("profile response must match the authenticated user as well as its employee", async () => {
+  const { client } = setup({ profileUserId: 99 });
+  await client.login("ana", "password");
+  await render(
+    <SessionProvider client={client}>
+      <PersonalCard />
+    </SessionProvider>,
+  );
+  expect(
+    await screen.findByText(
+      "El servidor devolvió una ficha que no corresponde a tu cuenta.",
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByText("Ana Pérez")).toBeNull();
+});
 test("empty history is different from a failed query", async () => {
   const { client } = setup({ empty: true });
   await client.login("ana", "password");
@@ -184,7 +208,7 @@ test("empty history is different from a failed query", async () => {
     </SessionProvider>,
   );
   expect(
-    await screen.findByText("Todav�a no ten�s accesos registrados"),
+    await screen.findByText("Todavía no tenés accesos registrados"),
   ).toBeTruthy();
 });
 
@@ -212,11 +236,11 @@ test("theme changes and missing backend are clearly shown on the employee login"
     await AsyncStorage.getItem("nexaccess.personal.preferences.v1"),
   ).toContain('"theme":"dark"');
   await fireEvent.changeText(screen.getByLabelText("Usuario"), "ana");
-  await fireEvent.changeText(screen.getByLabelText("Contrase�a"), "password");
-  await fireEvent.press(screen.getByRole("button", { name: "Iniciar sesi�n" }));
+  await fireEvent.changeText(screen.getByLabelText("Contraseña"), "password");
+  await fireEvent.press(screen.getByRole("button", { name: "Iniciar sesión" }));
   expect(
     await screen.findByText(
-      "El servidor todav�a no tiene habilitado el acceso m�vil de empleados.",
+      "El servidor todavía no tiene habilitado el acceso móvil de empleados.",
     ),
   ).toBeTruthy();
   expect(screen.queryByText("Registrarse")).toBeNull();

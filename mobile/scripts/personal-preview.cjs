@@ -18,7 +18,7 @@ const events = Array.from({ length: 43 }, (_, i) => ({
   occurredAt: new Date(now - (i * 5 + 1) * 3600000).toISOString(),
   result: i % 6 ? "AUTORIZADO" : "RECHAZADO",
   reason: i % 6 ? "AUTHORIZED" : "OUTSIDE_SCHEDULE",
-  areaName: i % 2 ? "Acceso principal" : "Recepci�n",
+  areaName: i % 2 ? "Acceso principal" : "Recepción",
   deviceCode: i % 2 ? "PUERTA-01" : "RECEPCION-02",
 }));
 function issue(sessionId) {
@@ -76,16 +76,22 @@ http
     try {
       body = text ? JSON.parse(text) : {};
     } catch {
-      return send(400, { detail: "JSON inv�lido." });
+      return send(400, { detail: "JSON inválido." });
     }
     if (req.method === "POST" && url.pathname === "/api/v1/auth/mobile/login") {
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          body.installationId || "",
+        )
+      )
+        return send(400, { detail: "installationId UUID es obligatorio." });
       if (
         body.username !== "empleado.demo" ||
         body.password !== "NexAccess2026!"
       )
         return send(401, {
           code: "INVALID_CREDENTIALS",
-          detail: "Usuario o contrase�a incorrectos.",
+          detail: "Usuario o contraseña incorrectos.",
         });
       const id = randomUUID();
       sessions.set(id, true);
@@ -96,10 +102,12 @@ http
       url.pathname.startsWith("/api/v1/auth/mobile/")
     ) {
       const id = renewals.get(body.refreshToken);
-      if (!id || id !== body.sessionId || !sessions.has(id))
+      if ((!id || !sessions.has(id)) && url.pathname.endsWith("/logout"))
+        return send(204);
+      if (!id || !sessions.has(id))
         return send(401, {
           code: "SESSION_REVOKED",
-          detail: "Sesi�n de prueba revocada.",
+          detail: "Sesión de prueba revocada.",
         });
       renewals.delete(body.refreshToken);
       if (url.pathname.endsWith("/refresh")) return send(200, issue(id));
@@ -112,14 +120,14 @@ http
       String(req.headers.authorization || "").replace(/^Bearer /, ""),
     );
     if (!sid || !sessions.has(sid))
-      return send(401, { detail: "Inici� sesi�n en la vista de prueba." });
+      return send(401, { detail: "Iniciá sesión en la vista de prueba." });
     if (req.method === "GET" && url.pathname === "/api/v1/me")
       return send(200, {
-        id: 42,
-        firstName: "Ana",
-        lastName: "Mart�nez",
-        fullName: "Ana Mart�nez",
-        documentNumber: "1234567",
+        userId: user.id,
+        username: user.username,
+        role: "EMPLEADO",
+        employeeId: 42,
+        fullName: "Ana Martínez",
         isActive: true,
       });
     if (req.method === "GET" && url.pathname === "/api/v1/me/credentials")
@@ -129,9 +137,9 @@ http
           [
             {
               id: 25,
-              name: "Credencial m�vil",
+              name: "Credencial móvil",
               type: "DIGITAL",
-              maskedCode: "���� A1B2",
+              maskedCode: "•••• A1B2",
               status: "ACTIVA",
               issuedAt: "2026-10-28T12:00:00Z",
               expiresAt: null,
@@ -162,6 +170,6 @@ http
   })
   .listen(8791, "127.0.0.1", () =>
     console.log(
-      "API de prueba LOCAL: http://localhost:8791/api/v1 � empleado.demo / NexAccess2026! � datos ficticios, sin NFC",
+      "API de prueba LOCAL: http://localhost:8791/api/v1 · empleado.demo / NexAccess2026! · datos ficticios, sin NFC",
     ),
   );

@@ -30,7 +30,6 @@ import {
   Action,
   dateLabel,
   Loading,
-  maskDocument,
   message,
   Notice,
   Sheet,
@@ -62,9 +61,13 @@ export default function PersonalCard() {
             pageOf(personalCredential),
           ),
         ]);
-        if (p.id !== employeeId)
+        if (
+          p.employeeId !== employeeId ||
+          p.userId !== user?.id ||
+          p.username !== user.username
+        )
           throw new Error(
-            "El servidor devolvi� una ficha que no corresponde a tu cuenta.",
+            "El servidor devolvió una ficha que no corresponde a tu cuenta.",
           );
         if (!isActive()) return;
         setPerson(p);
@@ -88,7 +91,7 @@ export default function PersonalCard() {
         if (isActive()) setBusy(false);
       }
     },
-    [client, employeeId],
+    [client, employeeId, user],
   );
   useEffect(() => {
     let active = true;
@@ -140,7 +143,7 @@ export default function PersonalCard() {
           </>
         )}
         {busy && !person ? (
-          <Loading label="Consultando tu tarjeta�" />
+          <Loading label="Consultando tu tarjeta…" />
         ) : (
           person && (
             <>
@@ -187,9 +190,7 @@ export default function PersonalCard() {
                   <Text style={[s.heading, { fontSize: 25, lineHeight: 32 }]}>
                     {person.fullName}
                   </Text>
-                  <Text style={s.muted}>
-                    Documento {maskDocument(person.documentNumber)}
-                  </Text>
+                  <Text style={s.muted}>Empleado · #{person.employeeId}</Text>
                 </View>
                 <View style={s.divider} />
                 {card ? (
@@ -219,16 +220,16 @@ export default function PersonalCard() {
                       <Nfc size={32} color={color.primary} />
                     </View>
                     <Text style={s.muted}>
-                      Vigencia � {dateLabel(card.expiresAt)}
+                      Vigencia · {dateLabel(card.expiresAt)}
                     </Text>
                   </>
                 ) : (
                   <View style={{ gap: 8 }}>
                     <Text style={s.sectionTitle}>
-                      Todav�a no ten�s una tarjeta digital
+                      Todavía no tenés una tarjeta digital
                     </Text>
                     <Text style={s.muted}>
-                      Solicit� al administrador que asigne una credencial m�vil
+                      Solicitá al administrador que asigne una credencial móvil
                       a tu cuenta.
                     </Text>
                   </View>
@@ -258,7 +259,7 @@ export default function PersonalCard() {
                   <Text
                     style={[s.label, { color: color.warning, marginBottom: 0 }]}
                   >
-                    Integraci�n NFC pendiente
+                    Integración NFC pendiente
                   </Text>
                   <Text style={[s.muted, { color: color.warning }]}>
                     {capabilities.reason ||
@@ -289,14 +290,14 @@ export default function PersonalCard() {
             <ChevronRight size={20} color={color.primary} />
           </Pressable>
           <Text style={s.muted}>
-            La preferencia se guarda en este tel�fono. Su disponibilidad depende
-            de Android y de la integraci�n NFC.
+            La preferencia se guarda en este teléfono. Su disponibilidad depende
+            de Android y de la integración NFC.
           </Text>
         </View>
       </ScrollView>
       {open && (
         <Sheet
-          title="Cu�ndo usar mi tarjeta"
+          title="Cuándo usar mi tarjeta"
           onClose={() => {
             if (!saving) setOpen(false);
           }}
@@ -359,7 +360,7 @@ export default function PersonalCard() {
             );
           })}
           <Text style={s.muted}>
-            �En todo momento� depende del tel�fono y no funciona con NFC
+            “En todo momento” depende del teléfono y no funciona con NFC
             desactivado o restricciones del sistema.
           </Text>
         </Sheet>
@@ -385,7 +386,7 @@ export default function PersonalCard() {
               <View style={{ flex: 1 }}>
                 <Text style={s.body}>{c.name || "Tarjeta digital"}</Text>
                 <Text style={s.muted}>
-                  {c.maskedCode} � {labels[c.status]}
+                  {c.maskedCode} · {labels[c.status]}
                 </Text>
               </View>
               {c.id === selectedId && <Check size={20} color={color.primary} />}

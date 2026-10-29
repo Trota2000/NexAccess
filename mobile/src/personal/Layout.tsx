@@ -26,7 +26,7 @@ export default function PersonalLayout() {
           <PersonalThemeButton />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cerrar sesi�n"
+            accessibilityLabel="Cerrar sesión"
             onPress={() => {
               setError("");
               setConfirm(true);
@@ -75,14 +75,14 @@ export default function PersonalLayout() {
       </Tabs>
       {confirm && (
         <Sheet
-          title="Cerrar sesi�n"
+          title="Cerrar sesión"
           onClose={() => {
             if (!busy) setConfirm(false);
           }}
         >
           <Text style={s.body}>
-            Tu tarjeta dejar� de funcionar desde este tel�fono hasta que vuelvas
-            a iniciar sesi�n.
+            Tu tarjeta dejará de funcionar desde este teléfono hasta que vuelvas
+            a iniciar sesión.
           </Text>
           {!!error && <Notice error>{error}</Notice>}
           <View style={s.row}>
@@ -96,7 +96,7 @@ export default function PersonalLayout() {
             </View>
             <View style={{ flex: 1 }}>
               <Action
-                title={busy ? "Cerrando�" : "Cerrar sesi�n"}
+                title={busy ? "Cerrando…" : "Cerrar sesión"}
                 destructive
                 icon={LogOut}
                 disabled={busy}

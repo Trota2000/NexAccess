@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "expo-crypto";
 import { normalizeBaseUrl } from "../api/client";
 import { SecretStorage } from "./storage";
 import {
@@ -19,6 +20,7 @@ export class PersonalApiError extends Error {
   }
 }
 export const sessionKey = "nexaccess.personal.session.v1";
+export const installationKey = "nexaccess.personal.installation.v1";
 const pendingKey = "nexaccess.personal.logout.v1";
 type Snapshot = { ready: boolean; user: EmployeeUser | null; notice: string };
 
@@ -31,6 +33,9 @@ export class PersonalClient {
   private refreshing?: Promise<void>;
   private restoring?: Promise<void>;
   private writes: Promise<void> = Promise.resolve();
+  private installation?: Promise<string>;
+  private signingOut = false;
+  private logoutFlight?: Promise<void>;
   private snapshot: Snapshot = { ready: false, user: null, notice: "" };
   private listeners = new Set<() => void>();
   constructor(
@@ -49,13 +54,29 @@ export class PersonalClient {
   };
   getSnapshot = () => this.snapshot;
   private publish(notice = "") {
-    this.snapshot = { ready: true, user: this.saved?.user ?? null, notice };
+    this.snapshot = {
+      ready: true,
+      user: this.signingOut ? null : (this.saved?.user ?? null),
+      notice,
+    };
     this.listeners.forEach((fn) => fn());
   }
   private persist(operation: () => Promise<void>): Promise<void> {
     const pending = this.writes.then(operation);
     this.writes = pending.catch(() => {});
     return pending;
+  }
+  private installationId(): Promise<string> {
+    return (this.installation ??= (async () => {
+      const saved = await this.storage.get(installationKey);
+      if (saved && z.uuid().safeParse(saved).success) return saved;
+      const next = randomUUID();
+      await this.storage.set(installationKey, next);
+      return next;
+    })().catch((error) => {
+      this.installation = undefined;
+      throw error;
+    }));
   }
   private async raw(
     path: string,
@@ -87,7 +108,7 @@ export class PersonalClient {
             : undefined;
       } catch {
         throw new PersonalApiError(
-          "El servidor devolvi� una respuesta inv�lida.",
+          "El servidor devolvió una respuesta inválida.",
           response.status,
           "CONTRACT_ERROR",
         );
@@ -98,7 +119,7 @@ export class PersonalClient {
           path.startsWith("/auth/mobile/")
         )
           throw new PersonalApiError(
-            "El servidor todav�a no tiene habilitado el acceso m�vil de empleados.",
+            "El servidor todavía no tiene habilitado el acceso móvil de empleados.",
             response.status,
             "MOBILE_API_PENDING",
           );
@@ -113,7 +134,7 @@ export class PersonalClient {
       if (response.status === 204) return undefined;
       if (!data)
         throw new PersonalApiError(
-          "La respuesta no corresponde a la API m�vil. Revis� la configuraci�n del servidor.",
+          "La respuesta no corresponde a la API móvil. Revisá la configuración del servidor.",
           0,
           "CONTRACT_ERROR",
         );
@@ -121,7 +142,7 @@ export class PersonalClient {
     } catch (error) {
       if (error instanceof PersonalApiError) throw error;
       throw new PersonalApiError(
-        "Sin conexi�n con el servidor. Tu sesi�n se conserva; pod�s volver a intentar.",
+        "Sin conexión con el servidor. Tu sesión se conserva; podés volver a intentar.",
       );
     } finally {
       clearTimeout(timer);
@@ -141,12 +162,12 @@ export class PersonalClient {
     const next = this.parse(mobileSession, data);
     if (Date.parse(next.expiresAt) <= Date.now())
       throw new PersonalApiError(
-        "El servidor devolvi� un token vencido.",
+        "El servidor devolvió un token vencido.",
         0,
         "CONTRACT_ERROR",
       );
     if (epoch !== this.epoch)
-      throw new PersonalApiError("La sesi�n cambi�.", 0, "STALE_REQUEST");
+      throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
     if (
       this.saved &&
       (next.sessionId !== this.saved.sessionId ||
@@ -154,7 +175,7 @@ export class PersonalClient {
         next.user.employeeId !== this.saved.user.employeeId)
     )
       throw new PersonalApiError(
-        "La renovaci�n devolvi� una identidad distinta.",
+        "La renovación devolvió una identidad distinta.",
         0,
         "CONTRACT_ERROR",
       );
@@ -166,11 +187,16 @@ export class PersonalClient {
     };
     await this.persist(async () => {
       if (epoch !== this.epoch)
-        throw new PersonalApiError("La sesi�n cambi�.", 0, "STALE_REQUEST");
-      await this.storage.set(sessionKey, JSON.stringify(saved));
+        throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
+      if (this.signingOut)
+        await this.storage.set(
+          pendingKey,
+          JSON.stringify({ api: this.base, refreshToken: saved.refreshToken }),
+        );
+      else await this.storage.set(sessionKey, JSON.stringify(saved));
       if (epoch !== this.epoch) {
         await this.storage.remove(sessionKey);
-        throw new PersonalApiError("La sesi�n cambi�.", 0, "STALE_REQUEST");
+        throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
       }
       this.saved = saved;
       this.token = next.accessToken;
@@ -179,17 +205,22 @@ export class PersonalClient {
     });
   }
   async login(username: string, password: string) {
+    if (this.signingOut || this.logoutFlight)
+      throw new PersonalApiError(
+        "Esperá a que termine el cierre de sesión anterior.",
+      );
     if (!username.trim() || !password)
-      throw new PersonalApiError("Ingres� tu usuario y contrase�a.", 400);
+      throw new PersonalApiError("Ingresá tu usuario y contraseña.", 400);
     const epoch = ++this.epoch;
     await this.flushLogout();
     if (await this.storage.get(pendingKey))
       throw new PersonalApiError(
-        "Falta confirmar el cierre de sesi�n anterior con el servidor. Revis� la conexi�n y volv� a intentar.",
+        "Falta confirmar el cierre de sesión anterior con el servidor. Revisá la conexión y volvé a intentar.",
       );
     const data = await this.raw("/auth/mobile/login", {
       username: username.trim(),
       password,
+      installationId: await this.installationId(),
     });
     // Do not turn an administrative session into an employee session.
     const user = employeeUser.safeParse((data as { user?: unknown })?.user);
@@ -206,7 +237,13 @@ export class PersonalClient {
   }
   private async restoreOnce() {
     try {
-      const value = await this.storage.get(sessionKey);
+      const closing = await this.storage.get(pendingKey);
+      if (closing) {
+        await this.disableNfc();
+        await this.storage.remove(sessionKey);
+        this.saved = null;
+      }
+      const value = closing ? null : await this.storage.get(sessionKey);
       if (value) {
         const parsed = storedSession.safeParse(JSON.parse(value));
         if (parsed.success && parsed.data.api === this.base)
@@ -222,12 +259,12 @@ export class PersonalClient {
           this.publish(
             error instanceof Error
               ? error.message
-              : "No se pudo sincronizar la sesi�n.",
+              : "No se pudo sincronizar la sesión.",
           );
         }
       }
     } catch {
-      this.publish("No se pudo recuperar la sesi�n guardada de forma segura.");
+      this.publish("No se pudo recuperar la sesión guardada de forma segura.");
     }
   }
   private refresh(): Promise<void> {
@@ -236,20 +273,20 @@ export class PersonalClient {
     const saved = this.saved;
     if (!saved)
       return Promise.reject(
-        new PersonalApiError("Inici� sesi�n para continuar.", 401),
+        new PersonalApiError("Iniciá sesión para continuar.", 401),
       );
     const pending = (async () => {
       try {
         await this.accept(
           await this.raw("/auth/mobile/refresh", {
             refreshToken: saved.refreshToken,
-            sessionId: saved.sessionId,
           }),
           epoch,
         );
       } catch (error) {
         if (
           epoch === this.epoch &&
+          !this.signingOut &&
           error instanceof PersonalApiError &&
           [401, 403].includes(error.status)
         ) {
@@ -260,7 +297,7 @@ export class PersonalClient {
           this.expires = 0;
           await this.persist(() => this.storage.remove(sessionKey));
           this.publish(
-            "La sesi�n fue revocada o la cuenta est� deshabilitada. Inici� sesi�n nuevamente.",
+            "La sesión fue revocada o la cuenta está deshabilitada. Iniciá sesión nuevamente.",
           );
         }
         throw error;
@@ -272,6 +309,12 @@ export class PersonalClient {
     return this.refreshing;
   }
   async get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+    if (this.signingOut)
+      throw new PersonalApiError(
+        "La sesión se está cerrando.",
+        0,
+        "STALE_REQUEST",
+      );
     if (
       !/^\/me(?:\/(?:credentials(?:\/[1-9]\d*\/nfc)?|access-events))?(?:\?[^#]*)?$/.test(
         path,
@@ -292,6 +335,8 @@ export class PersonalClient {
         );
     const epoch = this.epoch;
     if (!this.token || this.expires <= Date.now() + 30000) await this.refresh();
+    if (this.signingOut || epoch !== this.epoch)
+      throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
     let data: unknown;
     try {
       data = await this.raw(path, undefined, this.token);
@@ -301,13 +346,19 @@ export class PersonalClient {
       await this.refresh();
       data = await this.raw(path, undefined, this.token);
     }
-    if (epoch !== this.epoch)
-      throw new PersonalApiError("La sesi�n cambi�.", 0, "STALE_REQUEST");
+    if (epoch !== this.epoch || this.signingOut)
+      throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
     return this.parse(schema, data);
   }
-  async logout() {
+  logout(): Promise<void> {
+    return (this.logoutFlight ??= this.logoutOnce().finally(() => {
+      this.logoutFlight = undefined;
+    }));
+  }
+  private async logoutOnce() {
     await this.disableNfc();
-    ++this.epoch;
+    this.signingOut = true;
+    const refreshing = this.refreshing;
     const saved = this.saved;
     // Persist revocation work before removing the session. HCE is already disabled.
     await this.persist(async () => {
@@ -317,14 +368,31 @@ export class PersonalClient {
           JSON.stringify({
             api: this.base,
             refreshToken: saved.refreshToken,
-            sessionId: saved.sessionId,
           }),
+        );
+      await this.storage.remove(sessionKey);
+    });
+    this.publish("Cerrando sesión en este teléfono…");
+    // A refresh already sent may have consumed the old token. Revoke with the latest returned token.
+    try {
+      await refreshing;
+    } catch {
+      /* Keep local logout even when renewal failed. */
+    }
+    ++this.epoch;
+    const latest = this.saved;
+    await this.persist(async () => {
+      if (latest)
+        await this.storage.set(
+          pendingKey,
+          JSON.stringify({ api: this.base, refreshToken: latest.refreshToken }),
         );
       await this.storage.remove(sessionKey);
     });
     this.saved = null;
     this.token = "";
     this.expires = 0;
+    this.signingOut = false;
     this.publish();
     await this.flushLogout();
   }
@@ -340,7 +408,6 @@ export class PersonalClient {
       if (pending.api !== this.base) return;
       await this.raw("/auth/mobile/logout", {
         refreshToken: pending.refreshToken,
-        sessionId: pending.sessionId,
       });
       await this.storage.remove(pendingKey);
     } catch (error) {
@@ -352,7 +419,7 @@ export class PersonalClient {
         await this.storage.remove(pendingKey);
       else
         this.publish(
-          "Sesi�n cerrada en este tel�fono. La confirmaci�n del servidor est� pendiente de conexi�n.",
+          "Sesión cerrada en este teléfono. La confirmación del servidor está pendiente de conexión.",
         );
     }
   }

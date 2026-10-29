@@ -33,7 +33,7 @@ type Filters = { from: string; to: string; result: string };
 const emptyFilters: Filters = { from: "", to: "", result: "" };
 const reasons: Record<string, string> = {
   AUTHORIZED: "Permiso validado",
-  NO_PERMISSION: "Sin permiso para esta �rea",
+  NO_PERMISSION: "Sin permiso para esta área",
   OUTSIDE_SCHEDULE: "Fuera del horario permitido",
   CREDENTIAL_INACTIVE: "Credencial inactiva",
   CREDENTIAL_REVOKED: "Credencial revocada",
@@ -122,10 +122,10 @@ export default function PersonalHistory() {
         {filtered && (
           <View style={s.card}>
             <Text style={s.muted}>
-              {filters.from ? dateLabel(filters.from) : "Desde el inicio"} �{" "}
+              {filters.from ? dateLabel(filters.from) : "Desde el inicio"} ·{" "}
               {filters.to ? dateLabel(filters.to) : "Hasta hoy"}
               {filters.result
-                ? ` � ${filters.result === "AUTORIZADO" ? "Autorizados" : "Rechazados"}`
+                ? ` · ${filters.result === "AUTORIZADO" ? "Autorizados" : "Rechazados"}`
                 : ""}
             </Text>
             <Action
@@ -151,17 +151,17 @@ export default function PersonalHistory() {
             />
           </>
         )}
-        {busy && <Loading label="Consultando tus accesos�" />}
+        {busy && <Loading label="Consultando tus accesos…" />}
         {!busy && result?.items.length === 0 && (
           <View style={s.empty}>
             <History size={30} color={color.primary} />
             <Text style={s.sectionTitle}>
               {filtered
-                ? "Sin accesos en este per�odo"
-                : "Todav�a no ten�s accesos registrados"}
+                ? "Sin accesos en este período"
+                : "Todavía no tenés accesos registrados"}
             </Text>
             <Text style={[s.muted, { textAlign: "center" }]}>
-              Los intentos registrados por el lector aparecer�n aqu�.
+              Los intentos registrados por el lector aparecerán aquí.
             </Text>
           </View>
         )}
@@ -193,7 +193,7 @@ export default function PersonalHistory() {
                   </View>
                   <View style={{ flexShrink: 1, gap: 4 }}>
                     <Text style={[s.body, { fontWeight: "600" }]}>
-                      {item.areaName || "�rea sin especificar"}
+                      {item.areaName || "Área sin especificar"}
                     </Text>
                     <Text style={s.muted}>{item.deviceCode || "Lector"}</Text>
                   </View>
@@ -215,7 +215,7 @@ export default function PersonalHistory() {
                   {new Date(item.occurredAt).toLocaleTimeString("es-PY", {
                     hour: "2-digit",
                     minute: "2-digit",
-                      timeZone: "America/Asuncion",
+                    timeZone: "America/Asuncion",
                   })}
                 </Text>
               </View>

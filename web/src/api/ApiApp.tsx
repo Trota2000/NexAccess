@@ -69,6 +69,7 @@ import {
 } from "./workflows";
 import {
   authorize,
+  accountAccessBody,
   bodyFor,
   checkReportSize,
   display,
@@ -480,7 +481,9 @@ function Input({
                         ? "Activo"
                         : v === "false"
                           ? "Inactivo"
-                          : v}
+                          : field.key === "role" && v === "EMPLEADO"
+                            ? "EMPLEADO · app NFC"
+                            : v}
                   </Text>
                 </Pressable>
               ))}
@@ -579,6 +582,7 @@ interface FormSpec {
   fields: Field[];
   row?: Row;
   edit?: boolean;
+  hint?: string;
   submit: (body: Row) => void;
 }
 function EditForm({
@@ -625,6 +629,7 @@ function EditForm({
         />
       }
     >
+      {!!form.hint && <Text style={s.muted}>{form.hint}</Text>}
       <View style={s.formGrid}>
         {form.fields
           .filter((f) => !form.edit || !f.createOnly)
@@ -653,7 +658,19 @@ function EditForm({
                 value={draft[f.key]}
                 client={client}
                 onChange={(value) =>
-                  setDraft((d) => ({ ...d, [f.key]: value }))
+                  setDraft((d) => {
+                    const next = { ...d, [f.key]: value };
+                    if (
+                      f.key === "role" &&
+                      form.fields.some(
+                        (field) => field.key === "webAccessEnabled",
+                      )
+                    ) {
+                      next.webAccessEnabled = value !== "EMPLEADO";
+                      if (value === "EMPLEADO") next.mobileAccessEnabled = true;
+                    }
+                    return next;
+                  })
                 }
               />
               {fieldErrors[f.key] && (
@@ -961,6 +978,10 @@ function Workspace({
       fields: target.fields,
       row: row ?? seed,
       edit: !!row,
+      hint:
+        target.key === "users"
+          ? "EMPLEADO: app NFC sin panel web. ADMIN, SEGURIDAD o RRHH: panel web y, si se habilita, también la app personal con un empleado vinculado."
+          : undefined,
       submit: (body) =>
         prepare({
           title: row ? "Guardar cambios" : "Crear registro",
@@ -1257,6 +1278,38 @@ function Workspace({
                     title={createLabels[r.key] ?? "Nuevo registro"}
                     disabled={writing || busy}
                     onPress={() => createOrEdit()}
+                  />
+                )}
+                {r.key === "credentials" && canWrite && (
+                  <Button
+                    title="Emitir credencial digital"
+                    icon={Plus}
+                    disabled={writing || busy}
+                    onPress={() =>
+                      setForm({
+                        title: "Emitir credencial digital",
+                        fields: r.fields.filter((f) =>
+                          ["employeeId", "name", "expiresAt"].includes(f.key),
+                        ),
+                        hint: "El servidor genera el código. La apertura con el teléfono requiere completar la integración NFC nativa y el protocolo del lector.",
+                        submit: (body) =>
+                          prepare({
+                            title: "Emitir credencial digital",
+                            resource: r,
+                            path: `/credentials/digital/${id(body.employeeId)}`,
+                            method: "POST",
+                            body: {
+                              name: body.name,
+                              expiresAt: body.expiresAt,
+                            },
+                            onSuccess: (result) =>
+                              setSaved({
+                                key: r.key,
+                                row: writeReceipt(r.key, result),
+                              }),
+                          }),
+                      })
+                    }
                   />
                 )}
                 {r.export && (
@@ -1657,28 +1710,67 @@ function Workspace({
                 </>
               )}
             {canWrite && r.key === "users" && (
-              <Button
-                style={recordButtonStyle}
-                title="Cambiar contraseña"
-                secondary
-                onPress={() =>
-                  actionForm(
-                    "Cambiar contraseña",
-                    [
-                      {
-                        key: "newPassword",
-                        label: "Nueva contraseña",
-                        type: "password",
-                        required: true,
-                        min: 10,
-                        max: 200,
+              <>
+                <Button
+                  style={recordButtonStyle}
+                  title="Administrar acceso web / NFC"
+                  icon={UserCog}
+                  disabled={writing}
+                  secondary
+                  onPress={() =>
+                    setForm({
+                      title: "Administrar acceso web / NFC",
+                      hint: `Perfil actual: ${String(selected.role)}. El backend permite habilitar o retirar el canal móvil, pero no cambiar el perfil ni vincular otro empleado desde esta operación.`,
+                      fields: r.fields.filter((f) =>
+                        ["webAccessEnabled", "mobileAccessEnabled"].includes(
+                          f.key,
+                        ),
+                      ),
+                      row: {
+                        webAccessEnabled:
+                          selected.webAccessEnabled ??
+                          selected.role !== "EMPLEADO",
+                        mobileAccessEnabled:
+                          selected.mobileAccessEnabled ?? false,
                       },
-                    ],
-                    `/users/${id(selected.id)}/password`,
-                    "PUT",
-                  )
-                }
-              />
+                      submit: (body) =>
+                        prepare({
+                          title: "Guardar acceso web / NFC",
+                          resource: r,
+                          path: `/users/${id(selected.id)}/access`,
+                          method: "PUT",
+                          body: accountAccessBody(
+                            body,
+                            selected.role,
+                            selected.employeeId,
+                          ),
+                        }),
+                    })
+                  }
+                />
+                <Button
+                  style={recordButtonStyle}
+                  title="Cambiar contraseña"
+                  secondary
+                  onPress={() =>
+                    actionForm(
+                      "Cambiar contraseña",
+                      [
+                        {
+                          key: "newPassword",
+                          label: "Nueva contraseña",
+                          type: "password",
+                          required: true,
+                          min: 10,
+                          max: 200,
+                        },
+                      ],
+                      `/users/${id(selected.id)}/password`,
+                      "PUT",
+                    )
+                  }
+                />
+              </>
             )}
             {canWrite &&
               r.key === "enrollments" &&

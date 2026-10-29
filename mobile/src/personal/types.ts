@@ -22,12 +22,12 @@ export const storedSession = mobileSession
 export type EmployeeUser = z.infer<typeof employeeUser>;
 export type StoredSession = z.infer<typeof storedSession>;
 export const profile = z.object({
-  id: identifier,
+  userId: identifier,
+  username: z.string().min(1),
+  role: z.literal("EMPLEADO"),
+  employeeId: identifier,
   fullName: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  documentNumber: z.string(),
-  isActive: z.boolean(),
+  isActive: z.literal(true),
 });
 export type Profile = z.infer<typeof profile>;
 export const personalCredential = z.object({
@@ -40,6 +40,13 @@ export const personalCredential = z.object({
   expiresAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export type PersonalCredential = z.infer<typeof personalCredential>;
+// Current C# DTO uses `credential`; the supplied manual says `credentialCode`.
+// Keep this secret separate from card/history models. HCE provisioning is not implemented.
+export const nfcCredentialPayload = z.object({
+  credentialId: identifier,
+  credential: z.string().min(1),
+  expiresAt: z.iso.datetime({ offset: true }).nullable(),
+});
 export const accessEvent = z.object({
   id: identifier,
   occurredAt: z.iso.datetime({ offset: true }),
@@ -71,12 +78,12 @@ export const nfcModes: { key: NfcMode; title: string; description: string }[] =
     {
       key: "foreground",
       title: "Solo con la app abierta",
-      description: "NexAccess visible y tel�fono desbloqueado.",
+      description: "NexAccess visible y teléfono desbloqueado.",
     },
     {
       key: "unlocked",
       title: "Con pantalla desbloqueada",
-      description: "Tambi�n cuando la app no est� abierta.",
+      description: "También cuando la app no esté abierta.",
     },
     {
       key: "always",
