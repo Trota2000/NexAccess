@@ -311,7 +311,7 @@ export default function CompanySettings({
                           : "default"
                     }
                     autoCapitalize={f.key === "email" ? "none" : "sentences"}
-                    style={s.input}
+                    style={[s.input, !!fieldErrors[f.key] && s.invalidInput]}
                     placeholderTextColor={color.muted}
                     onBlur={() =>
                       setFieldErrors((errors) => ({
@@ -332,7 +332,7 @@ export default function CompanySettings({
                   <Text style={s.value}>{company?.[f.key] || "—"}</Text>
                 )}
                 {admin && !!fieldErrors[f.key] && (
-                  <Text accessibilityRole="alert" style={s.error}>
+                  <Text accessibilityRole="alert" style={s.fieldError}>
                     {fieldErrors[f.key]}
                   </Text>
                 )}
@@ -559,6 +559,8 @@ function styles(c: Colors) {
       backgroundColor: "#FFFFFF",
       borderRadius: 8,
     },
+    invalidInput: { borderColor: c.error },
+    fieldError: { color: c.error, fontSize: 13, lineHeight: 20 },
     error: {
       color: c.error,
       backgroundColor: c.errorBg,

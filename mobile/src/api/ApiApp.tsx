@@ -530,7 +530,7 @@ function Input({
               }
               maxLength={field.type === "id" ? 16 : (field.max ?? 500)}
               placeholder={field.type === "time" ? "08:00" : undefined}
-              style={s.input}
+              style={[s.input, !!invalid && s.invalidInput]}
             />
           )}
         </View>
@@ -561,7 +561,7 @@ function Input({
         )}
       </View>
       {!!invalid && (
-        <Text accessibilityRole="alert" style={s.error}>
+        <Text accessibilityRole="alert" style={s.fieldError}>
           {invalid}
         </Text>
       )}
@@ -2280,6 +2280,8 @@ function makeStyles(color: Colors) {
       fontSize: 16,
       color: color.ink,
     },
+    invalidInput: { borderColor: color.error },
+    fieldError: { color: color.error, fontSize: 13, lineHeight: 20 },
     error: {
       padding: 14,
       borderRadius: 10,
