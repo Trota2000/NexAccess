@@ -1,4 +1,5 @@
 import { ApiClient, ApiError, id, Row } from "./client";
+import { bodyFor } from "./resources";
 export interface Company {
   id: number;
   razonSocial: string;
@@ -13,10 +14,10 @@ export interface Company {
 export const companyFields = [
   { key: "razonSocial", label: "Razón social", max: 200, required: true },
   { key: "nombreFantasia", label: "Nombre de fantasía", max: 200 },
-  { key: "ruc", label: "RUC", max: 20 },
+  { key: "ruc", label: "RUC", max: 20, format: "taxId" },
   { key: "direccion", label: "Dirección", max: 300 },
-  { key: "telefono", label: "Teléfono", max: 50 },
-  { key: "email", label: "Correo institucional", max: 150 },
+  { key: "telefono", label: "Teléfono", max: 50, format: "phone" },
+  { key: "email", label: "Correo institucional", max: 150, format: "email" },
 ] as const;
 export type CompanyKey = (typeof companyFields)[number]["key"];
 export type CompanyDraft = Record<CompanyKey, string>;
@@ -30,26 +31,7 @@ export function companyDraft(company?: Company | null): CompanyDraft {
   ) as CompanyDraft;
 }
 export function companyBody(draft: CompanyDraft): Row {
-  const body: Row = {};
-  for (const f of companyFields) {
-    const value = draft[f.key].trim();
-    if (f.key === "razonSocial" && !value)
-      throw new ApiError("Ingresá la razón social.", 400, "VALIDATION_ERROR");
-    if (value.length > f.max)
-      throw new ApiError(
-        `${f.label}: máximo ${f.max} caracteres.`,
-        400,
-        "VALIDATION_ERROR",
-      );
-    if (f.key === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-      throw new ApiError(
-        "Ingresá un correo institucional válido.",
-        400,
-        "VALIDATION_ERROR",
-      );
-    body[f.key] = value || null;
-  }
-  return body;
+  return bodyFor(companyFields, draft);
 }
 export function readCompany(value: unknown): Company {
   const c = value as Company;

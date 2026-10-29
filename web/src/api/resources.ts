@@ -19,6 +19,8 @@ export interface Field {
   reference?: string;
   default?: string | boolean;
   createOnly?: boolean;
+  format?: "document" | "phone" | "email" | "personName" | "taxId";
+  hint?: string;
 }
 export interface Resource {
   key: string;
@@ -139,11 +141,37 @@ export const resources: Resource[] = [
         required: true,
         min: 3,
         max: 20,
+        format: "document",
+        hint: "Solo números, entre 3 y 20 dígitos. Ej.: 1234567.",
       },
-      { key: "firstName", label: "Nombres", required: true, max: 100 },
-      { key: "lastName", label: "Apellidos", required: true, max: 100 },
-      { key: "email", label: "Correo", max: 150 },
-      { key: "phone", label: "Teléfono", max: 30 },
+      {
+        key: "firstName",
+        label: "Nombres",
+        required: true,
+        max: 100,
+        format: "personName",
+      },
+      {
+        key: "lastName",
+        label: "Apellidos",
+        required: true,
+        max: 100,
+        format: "personName",
+      },
+      {
+        key: "email",
+        label: "Correo",
+        max: 150,
+        format: "email",
+        hint: "Ej.: nombre@gmail.com o nombre@ficticio.net.",
+      },
+      {
+        key: "phone",
+        label: "Teléfono",
+        max: 30,
+        format: "phone",
+        hint: "Entre 6 y 15 dígitos; admite + inicial, espacios, guiones y paréntesis.",
+      },
     ],
     filters: [search, activeFilter],
     columns: [
@@ -555,7 +583,102 @@ export function accountAccessBody(
   if (mobile) id(employeeId);
   return { webAccessEnabled: web, mobileAccessEnabled: mobile };
 }
-export function bodyFor(fields: Field[], draft: Row, edit = false): Row {
+export function inputError(field: Field, value: string): string {
+  if (
+    (field.type === "id" || field.format === "document") &&
+    !/^[0-9]*$/.test(value)
+  )
+    return "Solo se permiten números, sin letras ni separadores.";
+  if (field.format === "phone" && !/^\+?[0-9 ()-]*$/.test(value))
+    return "Usá números; se admiten + al inicio, espacios, guiones y paréntesis.";
+  if (field.format === "taxId" && !/^[0-9]*-?[0-9]*$/.test(value))
+    return "Usá números y, si corresponde, un guion para el dígito verificador.";
+  if (field.format === "personName" && !/^[\p{L}\p{M} .’'-]*$/u.test(value))
+    return "Usá letras; se admiten tildes, espacios, puntos, apóstrofes y guiones.";
+  return "";
+}
+export function fieldError(field: Field, raw: unknown): string {
+  if (field.type === "boolean") return "";
+  const value =
+    field.type === "password" ? String(raw ?? "") : String(raw ?? "").trim();
+  if (!value) return field.required ? "Campo obligatorio." : "";
+  const characters = inputError(field, value);
+  if (characters) return characters;
+  try {
+    if (field.type === "id") {
+      const number = id(value);
+      return field.max && number > field.max
+        ? `Valor máximo: ${field.max}.`
+        : "";
+    }
+    if (field.type === "datetime") {
+      instant(value);
+      return "";
+    }
+    if (field.type === "time")
+      return /^([01]\d|2[0-3]):[0-5]\d(?::00)?$/.test(value)
+        ? ""
+        : "Usá una hora válida en formato HH:mm.";
+  } catch {
+    return field.type === "id"
+      ? "Ingresá un número entero positivo válido."
+      : "Ingresá una fecha válida con zona horaria.";
+  }
+  if (field.min && value.length < field.min)
+    return `Mínimo ${field.min} caracteres.`;
+  if (field.max && value.length > field.max)
+    return `Máximo ${field.max} caracteres.`;
+  if (field.pattern && !new RegExp(field.pattern).test(value))
+    return "El valor no cumple el formato requerido.";
+  if (field.choices && !field.choices.includes(value))
+    return "Seleccioná una opción válida.";
+  if (field.format === "email" || field.key === "email") {
+    const parts = value.split("@");
+    const local = parts[0];
+    const labels = (parts[1] ?? "").split(".");
+    if (
+      parts.length !== 2 ||
+      local.length > 64 ||
+      !/^[A-Za-z0-9!#$%&'*+/=?^_\x60{|}~.-]+$/.test(local) ||
+      local.startsWith(".") ||
+      local.endsWith(".") ||
+      local.includes("..") ||
+      labels.length < 2 ||
+      labels.some(
+        (label) =>
+          !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label),
+      ) ||
+      !/^(?:[A-Za-z]{2,63}|xn--[A-Za-z0-9-]{2,59})$/.test(labels.at(-1)!)
+    )
+      return "Ingresá un correo completo, por ejemplo nombre@gmail.com o nombre@ficticio.net.";
+  }
+  if (field.format === "phone") {
+    const compact = value.replace(/[ ()-]/g, "");
+    let depth = 0;
+    for (const char of value) {
+      if (char === "(") depth++;
+      if (char === ")") depth--;
+      if (depth < 0 || depth > 1) return "Revisá los paréntesis del teléfono.";
+    }
+    if (
+      depth ||
+      !/^\+?[0-9]{6,15}$/.test(compact) ||
+      !/^\+?[0-9(].*[0-9]$/.test(value) ||
+      /\(\s*\)/.test(value)
+    )
+      return "Ingresá un teléfono de 6 a 15 dígitos, con formato válido.";
+  }
+  if (field.format === "taxId" && !/^[0-9]+(?:-[0-9])?$/.test(value))
+    return "Ingresá el RUC con números y, si corresponde, guion y un dígito verificador.";
+  if (field.format === "personName" && !/\p{L}/u.test(value))
+    return "Ingresá un nombre con letras.";
+  return "";
+}
+export function bodyFor(
+  fields: readonly Field[],
+  draft: Row,
+  edit = false,
+): Row {
   const body: Row = {};
   for (const f of fields.filter((f) => !edit || !f.createOnly)) {
     const raw =
@@ -569,44 +692,21 @@ export function bodyFor(fields: Field[], draft: Row, edit = false): Row {
     }
     const value =
       f.type === "password" ? String(raw ?? "") : String(raw ?? "").trim();
+    const invalid = fieldError(f, raw);
+    if (invalid)
+      throw new ApiError(`${f.label}: ${invalid}`, 400, "VALIDATION_ERROR", {
+        [f.key]: [invalid],
+      });
     if (!value) {
-      if (f.required)
-        throw new ApiError(
-          `Completá ${f.label.toLowerCase()}.`,
-          400,
-          "VALIDATION_ERROR",
-          { [f.key]: ["Campo obligatorio."] },
-        );
       body[f.key] = null;
       continue;
     }
     if (f.type === "id") {
-      const n = id(value);
-      if (f.max && n > f.max)
-        throw new ApiError(`${f.label}: valor máximo ${f.max}.`, 400);
-      body[f.key] = n;
+      body[f.key] = id(value);
     } else if (f.type === "datetime") body[f.key] = instant(value);
     else if (f.type === "time") {
-      if (!/^([01]\d|2[0-3]):[0-5]\d(?::00)?$/.test(value))
-        throw new ApiError(`${f.label}: usá HH:mm.`, 400);
       body[f.key] = `${value.slice(0, 5)}:00`;
-    } else {
-      if (
-        (f.min && value.length < f.min) ||
-        (f.max && value.length > f.max) ||
-        (f.pattern && !new RegExp(f.pattern).test(value)) ||
-        (f.choices && !f.choices.includes(value))
-      )
-        throw new ApiError(
-          `Revisá ${f.label.toLowerCase()}.`,
-          400,
-          "VALIDATION_ERROR",
-          { [f.key]: ["El valor no cumple el formato requerido."] },
-        );
-      if (f.key === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
-        throw new ApiError("Ingresá un correo válido.", 400);
-      body[f.key] = value;
-    }
+    } else body[f.key] = value;
   }
   if ("webAccessEnabled" in body && "role" in body)
     accountAccessBody(body, body.role, body.employeeId);

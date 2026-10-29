@@ -23,6 +23,7 @@ import {
   LucideIcon,
 } from "lucide-react-native";
 import { ApiClient, ApiError, Session } from "./client";
+import { fieldError, inputError } from "./resources";
 import { Colors, spacing, useDesign, useReducedMotion } from "./Theme";
 import {
   Company,
@@ -52,6 +53,7 @@ export default function CompanySettings({
   const [logo, setLogo] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [uncertain, setUncertain] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -99,6 +101,7 @@ export default function CompanySettings({
       if (!alive.current) return;
       setCompany(result);
       setDraft(companyDraft(result));
+      setFieldErrors({});
       setLogo(undefined);
       const image = result?.tieneLogo
         ? await getCompanyLogo(client)
@@ -111,6 +114,11 @@ export default function CompanySettings({
   }
   async function save() {
     let body;
+    setFieldErrors(
+      Object.fromEntries(
+        companyFields.map((f) => [f.key, fieldError(f, draft[f.key])]),
+      ),
+    );
     try {
       body = companyBody(draft);
     } catch (e) {
@@ -291,6 +299,7 @@ export default function CompanySettings({
                 {admin ? (
                   <TextInput
                     accessibilityLabel={f.label}
+                    aria-invalid={!!fieldErrors[f.key]}
                     value={draft[f.key]}
                     editable={!disabled}
                     maxLength={f.max}
@@ -302,14 +311,30 @@ export default function CompanySettings({
                           : "default"
                     }
                     autoCapitalize={f.key === "email" ? "none" : "sentences"}
-                    style={s.input}
+                    style={[s.input, !!fieldErrors[f.key] && s.invalidInput]}
                     placeholderTextColor={color.muted}
-                    onChangeText={(value) =>
-                      setDraft((d) => ({ ...d, [f.key]: value }))
+                    onBlur={() =>
+                      setFieldErrors((errors) => ({
+                        ...errors,
+                        [f.key]: fieldError(f, draft[f.key]),
+                      }))
                     }
+                    onChangeText={(value) => {
+                      const invalid = inputError(f, value);
+                      setFieldErrors((errors) => ({
+                        ...errors,
+                        [f.key]: invalid,
+                      }));
+                      if (!invalid) setDraft((d) => ({ ...d, [f.key]: value }));
+                    }}
                   />
                 ) : (
                   <Text style={s.value}>{company?.[f.key] || "—"}</Text>
+                )}
+                {admin && !!fieldErrors[f.key] && (
+                  <Text accessibilityRole="alert" style={s.fieldError}>
+                    {fieldErrors[f.key]}
+                  </Text>
                 )}
               </View>
             ))}
@@ -534,6 +559,8 @@ function styles(c: Colors) {
       backgroundColor: "#FFFFFF",
       borderRadius: 8,
     },
+    invalidInput: { borderColor: c.error },
+    fieldError: { color: c.error, fontSize: 13, lineHeight: 20 },
     error: {
       color: c.error,
       backgroundColor: c.errorBg,

@@ -57,6 +57,38 @@ describe.each(["light", "dark"] as const)("company settings in %s", (mode) => {
       .mocked(Picker.getDocumentAsync)
       .mockResolvedValue({ canceled: true, assets: null });
   });
+  test("company contact fields reject letters in numeric data and block an invalid email before PUT", async () => {
+    const request = jest.fn(async () => initial);
+    await render(
+      <CompanySettings
+        client={{ request } as unknown as ApiClient}
+        session={session("ADMIN")}
+      />,
+    );
+    await screen.findByDisplayValue(initial.razonSocial);
+    await fireEvent.changeText(screen.getByLabelText("Teléfono"), "123abc456");
+    expect(screen.getByLabelText("Teléfono").props.value).toBe("");
+    await fireEvent.changeText(
+      screen.getByLabelText("Teléfono"),
+      "+595 (21) 123456",
+    );
+    await fireEvent.changeText(screen.getByLabelText("RUC"), "ABC-1");
+    expect(screen.getByLabelText("RUC").props.value).toBe("");
+    await fireEvent.changeText(screen.getByLabelText("RUC"), "80000000-1");
+    await fireEvent.changeText(
+      screen.getByLabelText("Correo institucional"),
+      "contacto@empresa",
+    );
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Guardar datos de la empresa" }),
+    );
+    expect(
+      screen.getByLabelText("Correo institucional").props["aria-invalid"],
+    ).toBe(true);
+    expect(request.mock.calls.some((call) => (call as unknown[])[1])).toBe(
+      false,
+    );
+  });
   test("ADMIN configures a missing company with only documented fields", async () => {
     let configured = false;
     const request = jest.fn(
