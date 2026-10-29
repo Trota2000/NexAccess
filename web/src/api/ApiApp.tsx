@@ -2237,7 +2237,7 @@ function makeStyles(color: Colors) {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: spacing.md,
-      alignItems: "center",
+      alignItems: "flex-start",
     },
     button: {
       alignSelf: "flex-start",
