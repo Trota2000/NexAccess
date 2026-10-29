@@ -76,6 +76,8 @@ El manual dice credentialCode. [MyNfcCredentialResponse](https://github.com/sof2
 
 ## Límites y siguiente paso
 
+Verificación frontend ejecutada: 76 pruebas móviles, 32 web y 56 de integración aprobadas; TypeScript, ESLint, sincronización de fuentes y exportación Expo web de ambos proyectos correctos. Se revisaron login, tarjeta, historial, calendario y tema en navegador a tamaño de teléfono con el fixture ficticio local. Se intentó Expo Go mediante `npx expo start --go`; no hubo teléfono ni simulador conectado. No se probó HCE ni un APK físico.
+
 No hace falta reescribir React Native/Expo como Kotlin/Compose: el manual presenta esa arquitectura como recomendación. El servicio HCE sí requiere código Android nativo, incorporable al proyecto Expo una vez acordado el protocolo.
 
 La sincronización offline de políticas de lectores mencionada en el manual es un trabajo adicional de backend/firmware; no se incorpora como un nuevo módulo móvil ni se supone disponible en el lector actual.

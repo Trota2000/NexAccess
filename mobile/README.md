@@ -1,4 +1,4 @@
-> **App personal (28/10/2026):** la entrada móvil ahora muestra exclusivamente login del empleado, Mi tarjeta, Historial, cierre de sesión y tema. Ver [guía vigente de la app personal](../docs/APP_MOVIL_PERSONAL.md) para ejecutar, revisar el diseño con un fixture y consultar el contrato pendiente de backend/NFC. Las rutas administrativas y la demo anteriores están deshabilitadas en la navegación; lo que sigue se conserva como documentación histórica del prototipo.
+> **App personal (29/10/2026):** la entrada móvil ahora muestra exclusivamente login del empleado, Mi tarjeta, Historial, cierre de sesión y tema. Ver [guía vigente de la app personal](../docs/APP_MOVIL_PERSONAL.md) para ejecutar, revisar el diseño con un fixture y consultar el contrato integrado y los pendientes NFC. Las rutas administrativas y la demo anteriores están deshabilitadas en la navegación; lo que sigue se conserva como documentación histórica del prototipo.
 
 # NexAccess Mobile
 

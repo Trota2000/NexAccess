@@ -1,6 +1,6 @@
 # NexAccess — Frontend personal Android
 
-La app móvil tiene login del empleado, Mi tarjeta, Historial propio, cierre de sesión y tema claro/oscuro. La web administrativa no cambia. Los módulos móviles anteriores se conservan en código, pero sus rutas están fuera de la navegación protegida de empleados.
+La app móvil tiene login del empleado, Mi tarjeta, Historial propio, cierre de sesión y tema claro/oscuro. La web conserva sus módulos y añade gestión de canales web/móvil y emisión digital. Los módulos móviles anteriores se conservan en código, pero sus rutas están fuera de la navegación protegida de empleados.
 
 ## Ejecutar con backend real
 
