@@ -30,6 +30,8 @@ const snapshot = [
     ["POST", "/empresa/logo"],
     ["GET", "/empresa/logo"],
     ["DELETE", "/empresa/logo"],
+    ["PUT", "/users/{id}/access"],
+    ["POST", "/credentials/digital/{id}"],
   ].map(([method, path]) => ({ method, path, security: "bearer" })),
 ];
 const json = (data, status = 200) =>
@@ -68,7 +70,7 @@ test("catalog covers every operation/security scheme in the supplied OpenAPI, wi
   const signature = ({ method, path, security }) =>
     `${method} ${path} ${security}`;
   assert.equal(originalSnapshot.length, 53);
-  assert.equal(snapshot.length, 58);
+  assert.equal(snapshot.length, 60);
   assert.deepEqual(
     operations.map(signature).sort(),
     snapshot.map(signature).sort(),

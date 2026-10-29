@@ -1,4 +1,4 @@
-> **Integración API (21/10/2026):** el inicio de sesión predeterminado usa la API real. La maqueta anterior se conserva en `/demo`. Para ejecutar con el servicio publicado, seguí la [guía vigente de integración](../docs/INTEGRACION_API.md); los datos y credenciales de demostración de este documento solo corresponden a `/demo`.
+> **App personal (29/10/2026):** la entrada móvil ahora muestra exclusivamente login del empleado, Mi tarjeta, Historial, cierre de sesión y tema. Ver [guía vigente de la app personal](../docs/APP_MOVIL_PERSONAL.md) para ejecutar, revisar el diseño con un fixture y consultar el contrato integrado y los pendientes NFC. Las rutas administrativas y la demo anteriores están deshabilitadas en la navegación; lo que sigue se conserva como documentación histórica del prototipo.
 
 # NexAccess Mobile
 

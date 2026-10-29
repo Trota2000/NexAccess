@@ -413,12 +413,32 @@ export const resources: Resource[] = [
         key: "role",
         label: "Perfil del sistema",
         required: true,
-        choices: ["ADMIN", "SEGURIDAD", "RRHH"],
+        choices: ["ADMIN", "SEGURIDAD", "RRHH", "EMPLEADO"],
       },
       optional(employee),
+      {
+        key: "webAccessEnabled",
+        label: "Acceso al panel web",
+        type: "boolean",
+        default: true,
+      },
+      {
+        key: "mobileAccessEnabled",
+        label: "Acceso a la app NFC",
+        type: "boolean",
+        default: false,
+      },
     ],
     filters: [],
-    columns: ["username", "role", "employeeId", "isActive", "lastLoginAt"],
+    columns: [
+      "username",
+      "role",
+      "employeeId",
+      "webAccessEnabled",
+      "mobileAccessEnabled",
+      "isActive",
+      "lastLoginAt",
+    ],
   },
   {
     key: "audit",
@@ -499,10 +519,50 @@ export function authorize(role: SystemRole, r: Resource, write = false) {
       "FORBIDDEN",
     );
 }
+export function accountAccessBody(
+  draft: Row,
+  role: unknown,
+  employeeId: unknown,
+): Row {
+  const web = draft.webAccessEnabled,
+    mobile = draft.mobileAccessEnabled;
+  if (typeof web !== "boolean" || typeof mobile !== "boolean")
+    throw new ApiError("Indicá los dos canales de acceso.", 400);
+  if (!web && !mobile)
+    throw new ApiError(
+      "Debe quedar habilitado al menos un canal. Para bloquear la cuenta, usá Desactivar.",
+      400,
+    );
+  if (role === "EMPLEADO" && web)
+    throw new ApiError("El perfil EMPLEADO solo puede usar la app NFC.", 400);
+  if (["ADMIN", "SEGURIDAD", "RRHH"].includes(String(role)) && !web)
+    throw new ApiError(
+      "El backend actual requiere acceso web para perfiles administrativos. No permite cambiar el perfil de una cuenta existente.",
+      400,
+    );
+  if (!["ADMIN", "SEGURIDAD", "RRHH", "EMPLEADO"].includes(String(role)))
+    throw new ApiError("Seleccioná un perfil válido.", 400);
+  if (
+    mobile &&
+    (employeeId === null || employeeId === undefined || employeeId === "")
+  )
+    throw new ApiError(
+      "La app NFC requiere un empleado vinculado a la cuenta.",
+      400,
+      "VALIDATION_ERROR",
+      { employeeId: ["Vinculá un empleado antes de habilitar la app NFC."] },
+    );
+  if (mobile) id(employeeId);
+  return { webAccessEnabled: web, mobileAccessEnabled: mobile };
+}
 export function bodyFor(fields: Field[], draft: Row, edit = false): Row {
   const body: Row = {};
   for (const f of fields.filter((f) => !edit || !f.createOnly)) {
-    const raw = draft[f.key];
+    const raw =
+      draft[f.key] === undefined &&
+      ["webAccessEnabled", "mobileAccessEnabled"].includes(f.key)
+        ? f.default
+        : draft[f.key];
     if (f.type === "boolean") {
       body[f.key] = raw === true;
       continue;
@@ -548,6 +608,8 @@ export function bodyFor(fields: Field[], draft: Row, edit = false): Row {
       body[f.key] = value;
     }
   }
+  if ("webAccessEnabled" in body && "role" in body)
+    accountAccessBody(body, body.role, body.employeeId);
   if ("monday" in body) {
     if (
       ![
@@ -696,6 +758,9 @@ export const labels: Record<string, string> = {
   note: "Observación",
   username: "Usuario",
   role: "Perfil del sistema",
+  webAccessEnabled: "Acceso web",
+  mobileAccessEnabled: "App NFC",
+  maskedCode: "Código enmascarado",
   employeeId: "ID de empleado",
   userId: "ID de cuenta",
   deviceId: "ID de dispositivo",

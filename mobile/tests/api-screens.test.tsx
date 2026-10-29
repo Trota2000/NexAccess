@@ -105,6 +105,46 @@ describe.each(["light", "dark"] as const)(
             type: "ACCESO",
             isActive: true,
           });
+        if (path === "/users")
+          return response(
+            method === "POST"
+              ? { id: 17, ...body, isActive: true }
+              : [
+                  {
+                    id: 17,
+                    username: "fixture.account",
+                    role: "SEGURIDAD",
+                    employeeId: 12,
+                    isActive: true,
+                    webAccessEnabled: true,
+                    mobileAccessEnabled: false,
+                  },
+                ],
+            method === "POST" ? 201 : 200,
+          );
+        if (path === "/users/17/access")
+          return response({
+            id: 17,
+            username: "fixture.account",
+            role: "SEGURIDAD",
+            employeeId: 12,
+            isActive: true,
+            ...body,
+          });
+        if (path === "/credentials/digital/12")
+          return response(
+            {
+              id: 25,
+              employeeId: 12,
+              type: "DIGITAL",
+              name: null,
+              maskedCode: "••••1234",
+              status: "ACTIVA",
+              issuedAt: "2026-10-29T12:00:00Z",
+              expiresAt: null,
+            },
+            201,
+          );
         const items =
           path === "/employees"
             ? [employee]
@@ -183,6 +223,109 @@ describe.each(["light", "dark"] as const)(
       );
       expect(screen.getByLabelText("Contraseña").props.value).toBe("");
       expect(screen.queryByText("Ana Vera")).toBeNull();
+    });
+    test("admin creates an NFC-only account from its employee without granting web access", async () => {
+      await login();
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Ver detalle de Ana Vera" }),
+      );
+      await fireEvent.press(
+        await screen.findByRole("button", {
+          name: "Crear cuenta para este empleado",
+        }),
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Usuario"),
+        "empleado.demo",
+      );
+      await fireEvent.changeText(
+        screen.getByLabelText("Contraseña inicial"),
+        "Prueba-local-123",
+      );
+      await fireEvent.press(
+        screen.getByRole("radio", { name: "EMPLEADO · app NFC" }),
+      );
+      expect(screen.getByLabelText("Acceso al panel web").props.value).toBe(
+        false,
+      );
+      expect(screen.getByLabelText("Acceso a la app NFC").props.value).toBe(
+        true,
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
+      await waitFor(() =>
+        expect(
+          calls.some((c) => c.path === "/users" && c.method === "POST"),
+        ).toBe(true),
+      );
+      expect(
+        calls.find((c) => c.path === "/users" && c.method === "POST")?.body,
+      ).toMatchObject({
+        role: "EMPLEADO",
+        employeeId: 12,
+        webAccessEnabled: false,
+        mobileAccessEnabled: true,
+      });
+    });
+    test("admin enables mobile access on a linked security account with the actual PUT DTO", async () => {
+      await login(false);
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Cuentas de operadores" }),
+      );
+      await fireEvent.press(
+        await screen.findByRole("button", {
+          name: "Ver detalle de fixture.account",
+        }),
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Administrar acceso web / NFC" }),
+      );
+      await fireEvent(
+        screen.getByLabelText("Acceso a la app NFC"),
+        "valueChange",
+        true,
+      );
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
+      await waitFor(() =>
+        expect(
+          calls.some(
+            (c) => c.path === "/users/17/access" && c.method === "PUT",
+          ),
+        ).toBe(true),
+      );
+      expect(calls.find((c) => c.path === "/users/17/access")?.body).toEqual({
+        webAccessEnabled: true,
+        mobileAccessEnabled: true,
+      });
+    });
+    test("digital issuance asks the server to generate the code instead of sending one", async () => {
+      await login(false);
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Credenciales RFID/NFC" }),
+      );
+      await fireEvent.press(
+        await screen.findByRole("button", {
+          name: "Emitir credencial digital",
+        }),
+      );
+      await fireEvent.changeText(screen.getByLabelText("Empleado"), "12");
+      await fireEvent.press(
+        screen.getByRole("button", { name: "Revisar cambios" }),
+      );
+      await fireEvent.press(screen.getByRole("button", { name: "Confirmar" }));
+      await waitFor(() =>
+        expect(calls.some((c) => c.path === "/credentials/digital/12")).toBe(
+          true,
+        ),
+      );
+      expect(
+        calls.find((c) => c.path === "/credentials/digital/12")?.body,
+      ).toEqual({ name: null, expiresAt: null });
     });
     test("RRHH sees attendance and employees but not security or administrative modules", async () => {
       role = "RRHH";

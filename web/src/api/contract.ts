@@ -135,9 +135,19 @@ add("users.create", "POST", "/users", admin, [
   "password",
   "role",
   "employeeId",
+  "webAccessEnabled",
+  "mobileAccessEnabled",
 ]);
 add("users.status", "PATCH", "/users/{id}/status", admin, ["isActive"]);
 add("users.password", "PUT", "/users/{id}/password", admin, ["newPassword"]);
+add("users.access", "PUT", "/users/{id}/access", admin, [
+  "webAccessEnabled",
+  "mobileAccessEnabled",
+]);
+add("credentials.digital", "POST", "/credentials/digital/{id}", security, [
+  "name",
+  "expiresAt",
+]);
 add("audit.list", "GET", "/audit", admin);
 // Documented for coverage, intentionally unavailable to the Bearer UI.
 add(
