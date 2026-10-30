@@ -76,8 +76,8 @@ jobs:
           mkdir -p ../artifacts
           cp "$apk" ../artifacts/NexAccess-prueba.apk
           "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
-          grep -F "versionCode='3'" ../artifacts/APK-manifest.txt
-          grep -F "versionName='1.2.0'" ../artifacts/APK-manifest.txt
+          grep -F "versionCode='4'" ../artifacts/APK-manifest.txt
+          grep -F "versionName='1.2.1'" ../artifacts/APK-manifest.txt
           "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.hce.NexAccessHceService'
           # Release optimization may rename res/xml/nexaccess_hce.xml.
           # Locate the compiled XML by its unique AID, then inspect it with aapt.
@@ -95,9 +95,10 @@ jobs:
           nfc_xml=$(cat ../artifacts/NFC-resource-path.txt)
           "$build_tools/aapt" dump xmltree "$apk" "$nfc_xml" > ../artifacts/NFC-service.xmltree.txt
           grep -F 'F04E455841434301' ../artifacts/NFC-service.xmltree.txt
+          grep -F 'F04E4558414301' ../artifacts/NFC-service.xmltree.txt
           cd ../artifacts
           sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
-          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.2.0 (3)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: prototipo NX01 estatico; requiere firmware ESP32 actualizado" > BUILD.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.2.1 (4)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo del prototipo compartido; verificar transporte PN532" > BUILD.txt
       - name: Publicar APK descargable
         id: artifact
         uses: actions/upload-artifact@v4
@@ -111,4 +112,4 @@ jobs:
         env:
           ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
         run: |
-          printf '## NexAccess APK de prueba\n\n[Descargar APK y suma SHA-256](%s)\n\nIncluye JavaScript y usa la API pÃºblica; no necesita Metro. Firma provisional, no apta para Play Store.\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          printf '## NexAccess APK de prueba\n\n[Descargar APK y suma SHA-256](%s)\n\nIncluye JavaScript y usa la API pública; no necesita Metro. Firma provisional, no apta para Play Store.\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,4 @@
-# Android NFC — prototipo NexAccess 1.2.0
+# Android NFC — prototipo NexAccess 1.2.1
 
 ## Alcance
 
@@ -6,9 +6,21 @@ Solo se modifica la app Android y su compilación. No se modifica el backend ni 
 
 La app implementa HCE nativo mediante un config plugin Expo (fuentes en `mobile/plugins/nexaccess-hce`). Expo Go y el navegador no contienen este servicio: requieren instalar el nuevo APK.
 
+## Prueba de compatibilidad 1.2.1 con el prototipo del compañero
+
+La app conserva NX01 (AID de 8 bytes y lectura por fragmentos) y agrega el AID de 7 bytes `F04E4558414301` del ZIP `NexAccess_HCE_prototipo.zip` y del `main.cpp` compartido. No se incorpora el módulo Kotlin ni el script del ZIP: se mantienen la sesión, almacenamiento, vencimiento y los tres modos del módulo existente.
+
+Para ese lector, la app admite exactamente `00 A4 04 00 07 F0 4E 45 58 41 43 01`, también con `00` final. Responde `[credencial completa en ASCII][90 00]`, sin marcador NX01, prefijo de longitud, recortes ni cambios del código. No hace falta enviar READ en este modo. Sin credencial o si el modo/fecha no permite presentarla devuelve `69 85`.
+
+El backend revisado genera 32 bytes aleatorios codificados en hexadecimal: 64 caracteres. La respuesta directa ocupa 66 bytes. El búfer de 220 bytes declarado por el firmware no amplía el búfer interno de la biblioteca Adafruit PN532. Su responsable debe comprobar que su versión/transporte reciba la respuesta completa; de lo contrario habrá que ajustar el lector o usar NX01 por fragmentos. También sigue pendiente inicializar el target de `inDataExchange()` correctamente. Estos problemas del lector no se pueden resolver recortando o codificando de otra forma la credencial desde la app, porque el backend espera su valor exacto.
+
+Para probar: actualizar el APK sin desinstalar la versión anterior, activar NFC, abrir Mi tarjeta y comprobar que la credencial se haya preparado. Usar primero modo desbloqueado y app abierta con el firmware compartido del compañero. Si falla, recoger el estado/error de selección e intercambio del PN532 y el estado HTTP del backend, sin imprimir el código de la credencial. Un mensaje verde de preparación en la app no prueba recepción ni autorización en el ESP32.
+
+La compatibilidad de protocolo se prueba con el SELECT literal del compañero y con un código sintético de 64 caracteres, reproduciendo su parser ASCII/estado tras un transporte NFC correcto. No se ha probado el equipo físico. No se modificó firmware ni backend.
+
 ## Preparar el teléfono
 
-1. Instalar APK 1.2.0, activar NFC e iniciar sesión como empleado habilitado para móvil.
+1. Instalar APK 1.2.1, activar NFC e iniciar sesión como empleado habilitado para móvil.
 2. Copiar el identificador de instalación desde Mi tarjeta.
 3. Un administrador emite la credencial DIGITAL para ese empleado y ese identificador. El empleado debe tener los permisos del área del lector.
 4. Actualizar Mi tarjeta y seleccionar la tarjeta correspondiente si hay varias. La app solicita `GET /api/v1/me/credentials/{id}/nfc` con Bearer y prepara automáticamente el servicio HCE.
@@ -23,7 +35,7 @@ Los modos foreground/unlocked se comprueban en el servicio nativo. Always permit
 
 El `main.cpp` compartido solo toma el UID mediante `readPassiveTargetID()` y llama a `verificarAcceso(uidTexto)`. Su compañero debe agregar lectura ISO-DEP/APDU para obtener el código DIGITAL y pasar ese código a la misma función, conservando la rama física por UID.
 
-Contrato experimental NX01:
+Contrato experimental NX01 (se conserva para lectores que usen fragmentos):
 
 - AID: `F04E455841434301` (prototipo privado; no es un AID registrado).
 - SELECT: `00 A4 04 00 08 F0 4E 45 58 41 43 43 01 00` (también se admite sin el último `00`).

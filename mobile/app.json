@@ -2,7 +2,7 @@
   "expo": {
     "name": "NexAccess Mobile",
     "slug": "nexaccess-mobile",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "nexaccess-mobile",
@@ -12,7 +12,7 @@
       "bundleIdentifier": "com.nexaccess.mobile.demo"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "package": "com.nexaccess.mobile.demo",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",

@@ -24,7 +24,7 @@ Se compila en Linux porque el entorno Windows aislado impidió escribir el bytec
 
 El APK es para dispositivos Android ARM de 64 y 32 bits (arm64-v8a y armeabi-v7a). No incluye binarios de emulador x86. No necesita Expo Go, una computadora ni Metro; sí conexión al backend.
 
-API incorporada en la actualización 1.2.0: https://nx.rattenkoenig.net/api/v1. No se incorporan cuentas, contraseñas ni tokens al APK. Android versionCode: 3. El workflow ignora archivos .env locales para no incorporar el fixture de desarrollo.
+API incorporada en la actualización 1.2.0: https://nx.rattenkoenig.net/api/v1. No se incorporan cuentas, contraseñas ni tokens al APK. Android versionCode: 4. El workflow ignora archivos .env locales para no incorporar el fixture de desarrollo.
 
 ## Firma y alcance
 
