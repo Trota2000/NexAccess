@@ -8,6 +8,7 @@ import {
   mobileSession,
   storedSession,
   StoredSession,
+  nfcCredentialPayload,
 } from "./types";
 
 export class PersonalApiError extends Error {
@@ -35,6 +36,7 @@ export class PersonalClient {
   private writes: Promise<void> = Promise.resolve();
   private installation?: Promise<string>;
   private signingOut = false;
+  private nfcRevision = 0;
   private logoutFlight?: Promise<void>;
   private snapshot: Snapshot = { ready: false, user: null, notice: "" };
   private listeners = new Set<() => void>();
@@ -43,6 +45,11 @@ export class PersonalClient {
     private storage: SecretStorage,
     private transport: typeof fetch = fetch,
     private disableNfc: () => Promise<void> = async () => {},
+    private configureNfc: (
+      id: number,
+      credential: string,
+      expiresAt: string | null,
+    ) => Promise<void> = async () => {},
   ) {
     this.base = normalizeBaseUrl(base);
   }
@@ -81,6 +88,49 @@ export class PersonalClient {
   // Installation identifier only; never exposes refresh/access/NFC secrets.
   getInstallationId(): Promise<string> {
     return this.installationId();
+  }
+  // The unmasked credential never becomes React state or a public return value.
+  async prepareNfc(id: number): Promise<void> {
+    if (!Number.isSafeInteger(id) || id <= 0)
+      throw new PersonalApiError("Tarjeta inválida.", 400);
+    const epoch = this.epoch;
+    const revision = ++this.nfcRevision;
+    try {
+      const payload = await this.get(
+        `/me/credentials/${id}/nfc`,
+        nfcCredentialPayload,
+      );
+      if (
+        payload.credentialId !== id ||
+        !/^[\x21-\x7E]{1,160}$/.test(payload.credential) ||
+        (payload.expiresAt && Date.parse(payload.expiresAt) <= Date.now())
+      )
+        throw new PersonalApiError(
+          "La credencial NFC no es válida o está vencida.",
+          0,
+          "CONTRACT_ERROR",
+        );
+      await this.persist(async () => {
+        if (
+          epoch !== this.epoch ||
+          revision !== this.nfcRevision ||
+          this.signingOut ||
+          !this.saved
+        )
+          throw new PersonalApiError("La sesión cambió.", 0, "STALE_REQUEST");
+        await this.configureNfc(id, payload.credential, payload.expiresAt);
+      });
+    } catch (error) {
+      await this.persist(async () => {
+        if (epoch === this.epoch && revision === this.nfcRevision)
+          await this.disableNfc();
+      });
+      throw error;
+    }
+  }
+  async clearNfc(): Promise<void> {
+    ++this.nfcRevision;
+    await this.persist(() => this.disableNfc());
   }
   private async raw(
     path: string,
@@ -255,6 +305,7 @@ export class PersonalClient {
         else await this.storage.remove(sessionKey);
       }
       await this.flushLogout();
+      if (!this.saved) await this.disableNfc();
       this.publish();
       if (this.saved) {
         try {
@@ -294,7 +345,7 @@ export class PersonalClient {
           error instanceof PersonalApiError &&
           [401, 403].includes(error.status)
         ) {
-          await this.disableNfc();
+          await this.clearNfc();
           ++this.epoch;
           this.saved = null;
           this.token = "";
@@ -360,8 +411,9 @@ export class PersonalClient {
     }));
   }
   private async logoutOnce() {
-    await this.disableNfc();
     this.signingOut = true;
+    ++this.nfcRevision;
+    await this.persist(() => this.disableNfc());
     const refreshing = this.refreshing;
     const saved = this.saved;
     // Persist revocation work before removing the session. HCE is already disabled.

@@ -66,6 +66,97 @@ const mockTransport = (
   fn: (url: string, init?: RequestInit) => Promise<Response>,
 ) => jest.fn(fn) as unknown as jest.MockedFunction<typeof fetch>;
 
+test("prepares only the installation-bound NFC payload without exposing it to UI or session storage", async () => {
+  const { store, data } = storage();
+  const configure = jest.fn(async () => {});
+  const disable = jest.fn(async () => {});
+  const transport = mockTransport(async (url) =>
+    response(
+      String(url).includes("/auth/")
+        ? session()
+        : {
+            credentialId: 25,
+            credential: "SYNTHETIC-NFC-CODE",
+            expiresAt: null,
+          },
+    ),
+  );
+  const client = new PersonalClient(
+    "https://example.test/api/v1",
+    store,
+    transport,
+    disable,
+    configure,
+  );
+  await client.login("empleado", "password");
+  expect(await client.prepareNfc(25)).toBeUndefined();
+  expect(configure).toHaveBeenCalledWith(25, "SYNTHETIC-NFC-CODE", null);
+  expect(JSON.stringify(client.getSnapshot())).not.toContain(
+    "SYNTHETIC-NFC-CODE",
+  );
+  expect([...data.values()].join()).not.toContain("SYNTHETIC-NFC-CODE");
+  await client.logout();
+  expect(disable).toHaveBeenCalled();
+});
+
+test("a mismatched NFC response clears the previous card instead of presenting it", async () => {
+  const configure = jest.fn(async () => {});
+  const disable = jest.fn(async () => {});
+  const transport = mockTransport(async (url) =>
+    response(
+      String(url).includes("/auth/")
+        ? session()
+        : {
+            credentialId: 999,
+            credential: "SYNTHETIC",
+            expiresAt: null,
+          },
+    ),
+  );
+  const client = new PersonalClient(
+    "https://example.test/api/v1",
+    storage().store,
+    transport,
+    disable,
+    configure,
+  );
+  await client.login("empleado", "password");
+  await expect(client.prepareNfc(25)).rejects.toMatchObject({
+    code: "CONTRACT_ERROR",
+  });
+  expect(configure).not.toHaveBeenCalled();
+  expect(disable).toHaveBeenCalledTimes(1);
+});
+
+test("an NFC response arriving after logout cannot reactivate the credential", async () => {
+  let release!: (response: Response) => void;
+  const deferred = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const configure = jest.fn(async () => {});
+  const transport = mockTransport(async (url) =>
+    String(url).endsWith("/nfc") ? deferred : response(session()),
+  );
+  const client = new PersonalClient(
+    "https://example.test/api/v1",
+    storage().store,
+    transport,
+    async () => {},
+    configure,
+  );
+  await client.login("empleado", "password");
+  const pending = client.prepareNfc(25);
+  const rejected = expect(pending).rejects.toMatchObject({
+    code: "STALE_REQUEST",
+  });
+  await client.logout();
+  release(
+    response({ credentialId: 25, credential: "SYNTHETIC", expiresAt: null }),
+  );
+  await rejected;
+  expect(configure).not.toHaveBeenCalled();
+});
+
 test("NFC payload follows the current C# DTO rather than the manual field name", () => {
   expect(
     nfcCredentialPayload.safeParse({

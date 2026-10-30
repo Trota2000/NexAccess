@@ -3,7 +3,7 @@ name: Build NexAccess Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [feature/android-apk-build]
+    branches: [feature/android-apk-build, feature/nfc-hce-prototype]
     paths:
       - "mobile/**"
       - ".github/workflows/android-apk.yml"
@@ -56,6 +56,8 @@ jobs:
         run: npm test
       - name: Lint
         run: npm run lint
+      - name: Probar protocolo NFC nativo
+        run: bash scripts/test-hce.sh
       - name: Generar Android con Expo CNG
         run: npx expo prebuild --platform android --no-install
       - name: Compilar release con firma de prueba
@@ -74,11 +76,13 @@ jobs:
           mkdir -p ../artifacts
           cp "$apk" ../artifacts/NexAccess-prueba.apk
           "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
-          grep -F "versionCode='2'" ../artifacts/APK-manifest.txt
-          grep -F "versionName='1.1.0'" ../artifacts/APK-manifest.txt
+          grep -F "versionCode='3'" ../artifacts/APK-manifest.txt
+          grep -F "versionName='1.2.0'" ../artifacts/APK-manifest.txt
+          "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.hce.NexAccessHceService'
+          "$build_tools/aapt" dump xmltree "$apk" res/xml/nexaccess_hce.xml | grep -F 'F04E455841434301'
           cd ../artifacts
           sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
-          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.1.0 (2)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: pendiente de protocolo seguro e integracion nativa" > BUILD.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.2.0 (3)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: prototipo NX01 estatico; requiere firmware ESP32 actualizado" > BUILD.txt
       - name: Publicar APK descargable
         id: artifact
         uses: actions/upload-artifact@v4

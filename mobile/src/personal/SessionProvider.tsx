@@ -8,7 +8,7 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { setTheme } from "../api/Theme";
 import { PersonalClient } from "./client";
 import { secrets } from "./storage";
@@ -32,6 +32,7 @@ const defaultClient = () =>
     secrets,
     fetch,
     () => nfc.disable(),
+    (id, credential, expiresAt) => nfc.configure(id, credential, expiresAt),
   );
 type PersonalContext = {
   client: PersonalClient;
@@ -65,8 +66,10 @@ export function SessionProvider({
         if (
           ["foreground", "unlocked", "always"].includes(prefs.nfcMode) &&
           active
-        )
+        ) {
           changeMode(prefs.nfcMode);
+          await nfc.setMode(prefs.nfcMode);
+        } else await nfc.setMode("unlocked");
       } catch {
         /* Invalid non-secret preferences fall back to system/defaults. */
       }
@@ -88,6 +91,16 @@ export function SessionProvider({
       active = false;
     };
   }, [client]);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active")
+        void nfc
+          .capabilities()
+          .then(setCapabilities)
+          .catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
   async function preference(key: string, value: string) {
     const write = preferenceWrites.current.then(async () => {
       const raw = await AsyncStorage.getItem(preferencesKey);

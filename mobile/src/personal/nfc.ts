@@ -1,7 +1,7 @@
 import { NativeModules, Platform } from "react-native";
 import { NfcMode } from "./types";
 
-// Integration boundary for the future Android HCE module. No UID emulation or fake success.
+// Android HCE prototype. Expo Go and web intentionally have no native implementation.
 export type NfcCapabilities = {
   available: boolean;
   enabled: boolean;
@@ -12,6 +12,11 @@ interface NativeNfc {
   getCapabilities(): Promise<NfcCapabilities>;
   setMode(mode: NfcMode): Promise<void>;
   disableCredential(): Promise<void>;
+  configureCredential(
+    id: number,
+    credential: string,
+    expires: number,
+  ): Promise<void>;
 }
 function native(): NativeNfc | undefined {
   return Platform.OS === "android" ? NativeModules.NexAccessHce : undefined;
@@ -35,5 +40,15 @@ export const nfc = {
   },
   async disable() {
     await native()?.disableCredential();
+  },
+  async configure(id: number, credential: string, expiresAt: string | null) {
+    const module = native();
+    if (!module)
+      throw new Error("Instalá el APK con NFC nativo para usar la tarjeta.");
+    await module.configureCredential(
+      id,
+      credential,
+      expiresAt ? Date.parse(expiresAt) : 0,
+    );
   },
 };
