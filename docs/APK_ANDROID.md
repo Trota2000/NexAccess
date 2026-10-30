@@ -4,7 +4,7 @@ La compilación parte del código actual de mobile y genera Android mediante Exp
 
 ## Compilación
 
-El workflow `Build NexAccess Android APK` se ejecuta al subir cambios móviles a `feature/android-apk-build`. También declara `workflow_dispatch`, utilizable desde Actions si el workflow se integra a la rama por defecto.
+El workflow `Build NexAccess Android APK` se ejecuta al subir cambios móviles a `feature/android-apk-build` o `feature/nfc-hce-prototype`. También permite `workflow_dispatch` desde Actions.
 
 1. Instala el package-lock existente con npm ci.
 2. Ejecuta TypeScript, pruebas y lint.
@@ -24,7 +24,7 @@ Se compila en Linux porque el entorno Windows aislado impidió escribir el bytec
 
 El APK es para dispositivos Android ARM de 64 y 32 bits (arm64-v8a y armeabi-v7a). No incluye binarios de emulador x86. No necesita Expo Go, una computadora ni Metro; sí conexión al backend.
 
-API incorporada en la actualización 1.1.0: https://nx.rattenkoenig.net/api/v1. No se incorporan cuentas, contraseñas ni tokens al APK. Android versionCode: 2. El workflow ignora archivos .env locales para no incorporar el fixture de desarrollo.
+API incorporada en la actualización 1.2.0: https://nx.rattenkoenig.net/api/v1. No se incorporan cuentas, contraseñas ni tokens al APK. Android versionCode: 4. El workflow ignora archivos .env locales para no incorporar el fixture de desarrollo.
 
 ## Firma y alcance
 
@@ -32,4 +32,4 @@ Esta es una compilación de prueba: utiliza la firma provisional que genera la p
 
 El identificador Android existente es com.nexaccess.mobile.demo; se conserva. Si hay otra instalación con ese identificador y distinta firma, Android no permitirá actualizarla directamente. El artefacto de Actions se conserva siete días.
 
-Validaciones de compilación y firma no equivalen a ejecutar la app en un teléfono: confirmar login de empleado → Mi tarjeta → copiar instalación → emisión administrativa → actualizar tarjeta → historial → logout y restauración de sesión. La app móvil anterior ya no forma parte de la navegación. HCE y apertura NFC física continúan pendientes y se indican en pantalla. Ver [el flujo de integración](INTEGRACION_MANUAL_V1.md).
+Validaciones de compilación y firma no equivalen a ejecutar la app en un teléfono: confirmar login de empleado → Mi tarjeta → copiar instalación → emisión administrativa → actualizar tarjeta → historial → logout y restauración de sesión. La app móvil anterior ya no forma parte de la navegación. Esta versión incorpora HCE de prototipo; el firmware original del ESP32 todavía debe implementar el mismo protocolo. Ver [preparación, protocolo y requisitos del lector](NFC_ANDROID_PROTOTIPO.md). No se modificó ni se incluye firmware.

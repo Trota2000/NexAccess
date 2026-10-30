@@ -3,7 +3,7 @@ name: Build NexAccess Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [feature/android-apk-build]
+    branches: [feature/android-apk-build, feature/nfc-hce-prototype]
     paths:
       - "mobile/**"
       - ".github/workflows/android-apk.yml"
@@ -56,6 +56,8 @@ jobs:
         run: npm test
       - name: Lint
         run: npm run lint
+      - name: Probar protocolo NFC nativo
+        run: bash scripts/test-hce.sh
       - name: Generar Android con Expo CNG
         run: npx expo prebuild --platform android --no-install
       - name: Compilar release con firma de prueba
@@ -74,11 +76,29 @@ jobs:
           mkdir -p ../artifacts
           cp "$apk" ../artifacts/NexAccess-prueba.apk
           "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
-          grep -F "versionCode='2'" ../artifacts/APK-manifest.txt
-          grep -F "versionName='1.1.0'" ../artifacts/APK-manifest.txt
+          grep -F "versionCode='4'" ../artifacts/APK-manifest.txt
+          grep -F "versionName='1.2.1'" ../artifacts/APK-manifest.txt
+          "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.hce.NexAccessHceService'
+          # Release optimization may rename res/xml/nexaccess_hce.xml.
+          # Locate the compiled XML by its unique AID, then inspect it with aapt.
+          python3 - "$apk" <<'PYAPK'
+          import sys, zipfile
+          aid = "F04E455841434301"
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              matches = [entry.filename for entry in archive.infolist()
+                         if entry.filename.startswith("res/") and entry.file_size < 2_000_000
+                         and any(token in archive.read(entry) for token in (aid.encode(), aid.encode("utf-16le")))]
+          assert len(matches) == 1, f"Expected one NFC AID resource, found {len(matches)}"
+          with open("../artifacts/NFC-resource-path.txt", "w") as output:
+              output.write(matches[0])
+          PYAPK
+          nfc_xml=$(cat ../artifacts/NFC-resource-path.txt)
+          "$build_tools/aapt" dump xmltree "$apk" "$nfc_xml" > ../artifacts/NFC-service.xmltree.txt
+          grep -F 'F04E455841434301' ../artifacts/NFC-service.xmltree.txt
+          grep -F 'F04E4558414301' ../artifacts/NFC-service.xmltree.txt
           cd ../artifacts
           sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
-          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.1.0 (2)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: pendiente de protocolo seguro e integracion nativa" > BUILD.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.2.1 (4)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo del prototipo compartido; verificar transporte PN532" > BUILD.txt
       - name: Publicar APK descargable
         id: artifact
         uses: actions/upload-artifact@v4

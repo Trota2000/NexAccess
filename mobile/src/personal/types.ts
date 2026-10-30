@@ -41,7 +41,7 @@ export const personalCredential = z.object({
 });
 export type PersonalCredential = z.infer<typeof personalCredential>;
 // Current C# DTO and endpoint manual use `credential`.
-// Keep this secret separate from card/history models. HCE provisioning is not implemented.
+// Keep this secret separate from card/history models and React state.
 export const nfcCredentialPayload = z.object({
   credentialId: identifier,
   credential: z.string().min(1),

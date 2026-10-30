@@ -54,6 +54,8 @@ export default function PersonalCard() {
   const [installation, setInstallation] = useState("");
   const [installationError, setInstallationError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [nfcReady, setNfcReady] = useState(false);
+  const [nfcError, setNfcError] = useState("");
   useEffect(() => {
     let active = true;
     void client
@@ -125,6 +127,29 @@ export default function PersonalCard() {
     };
   }, [load]);
   const card = cards.find((c) => c.id === selectedId);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      setNfcReady(false);
+      setNfcError("");
+      try {
+        if (!capabilities.available || !card || card.status !== "ACTIVA") {
+          await client.clearNfc();
+          return;
+        }
+        await client.prepareNfc(card.id);
+        if (active) setNfcReady(true);
+      } catch (error) {
+        if (active) setNfcError(message(error));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [client, card, capabilities.available]);
+  const nfcColor =
+    nfcReady && capabilities.enabled ? color.success : color.warning;
   const chosen = nfcModes.find((mode) => mode.key === nfcMode)!;
   const labels = {
     ACTIVA: "Activa",
@@ -270,23 +295,36 @@ export default function PersonalCard() {
                   s.row,
                   {
                     alignItems: "flex-start",
-                    backgroundColor: color.warningBg,
+                    backgroundColor:
+                      nfcReady && capabilities.enabled
+                        ? color.successBg
+                        : color.warningBg,
                     borderRadius: 12,
                     padding: 16,
                   },
                 ]}
               >
-                <ShieldCheck size={20} color={color.warning} />
+                <ShieldCheck size={20} color={nfcColor} />
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text
-                    style={[s.label, { color: color.warning, marginBottom: 0 }]}
-                  >
-                    Integración NFC pendiente
+                  <Text style={[s.label, { color: nfcColor, marginBottom: 0 }]}>
+                    {nfcReady && capabilities.enabled
+                      ? "Tarjeta preparada para NFC"
+                      : capabilities.available
+                        ? "NFC no está listo"
+                        : "Integración NFC pendiente"}
                   </Text>
-                  <Text style={[s.muted, { color: color.warning }]}>
-                    {capabilities.reason ||
-                      "Falta vincular la credencial con el servicio NFC nativo y verificar el lector."}
+                  <Text style={[s.muted, { color: nfcColor }]}>
+                    {nfcError ||
+                      (nfcReady && capabilities.enabled
+                        ? "Acercá el teléfono al lector NexAccess actualizado. El lector indicará si el acceso está autorizado o rechazado."
+                        : capabilities.reason ||
+                          "Comprobando la credencial vinculada a este teléfono…")}
                   </Text>
+                  {nfcReady && !!capabilities.reason && (
+                    <Text style={[s.muted, { color: nfcColor }]}>
+                      {capabilities.reason}
+                    </Text>
+                  )}
                 </View>
               </View>
             </>
