@@ -1,4 +1,5 @@
 import React from "react";
+import * as Clipboard from "expo-clipboard";
 import {
   act,
   fireEvent,
@@ -144,6 +145,23 @@ test("personal card masks document, contains only personal controls and persists
   ).toContain('"nfcMode":"foreground"');
 });
 
+test("employee can copy only the persistent installation identifier for administrative issuance", async () => {
+  const { client } = setup();
+  await client.login("ana", "password");
+  await render(
+    <SessionProvider client={client}>
+      <PersonalCard />
+    </SessionProvider>,
+  );
+  const uuid = await client.getInstallationId();
+  expect(await screen.findByText(uuid)).toBeTruthy();
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Copiar identificador" }),
+  );
+  await screen.findByRole("button", { name: "Identificador copiado" });
+  expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(uuid);
+  expect(screen.queryByText("refresh")).toBeNull();
+});
 test("history renders the authenticated employee and filters without sending an employeeId", async () => {
   const { client, transport } = setup();
   await client.login("ana", "password");

@@ -19,7 +19,7 @@ export interface Field {
   reference?: string;
   default?: string | boolean;
   createOnly?: boolean;
-  format?: "document" | "phone" | "email" | "personName" | "taxId";
+  format?: "document" | "phone" | "email" | "personName" | "taxId" | "uuid";
   hint?: string;
 }
 export interface Resource {
@@ -205,7 +205,7 @@ export const resources: Resource[] = [
         key: "type",
         label: "Tipo",
         required: true,
-        choices: ["FISICA", "DIGITAL"],
+        choices: ["FISICA"],
         default: "FISICA",
       },
       optional(name),
@@ -508,7 +508,7 @@ export const resources: Resource[] = [
       {
         key: "credentialType",
         label: "Tipo de credencial",
-        choices: ["FISICA", "DIGITAL"],
+        choices: ["FISICA"],
         default: "FISICA",
       },
       { key: "credentialName", label: "Nombre de credencial", max: 100 },
@@ -533,6 +533,19 @@ export const resources: Resource[] = [
       "completedAt",
     ],
   },
+];
+export const digitalCredentialFields: Field[] = [
+  employee,
+  {
+    key: "installationId",
+    label: "Instalación Android",
+    required: true,
+    max: 36,
+    format: "uuid",
+    hint: "Pegá el identificador que el empleado copia desde Mi tarjeta. Debe tener una sesión móvil activa.",
+  },
+  optional(name),
+  { key: "expiresAt", label: "Vencimiento (opcional)", type: "datetime" },
 ];
 export function resource(key: string): Resource {
   const r = resources.find((r) => r.key === key);
@@ -584,6 +597,8 @@ export function accountAccessBody(
   return { webAccessEnabled: web, mobileAccessEnabled: mobile };
 }
 export function inputError(field: Field, value: string): string {
+  if (field.format === "uuid" && !/^[0-9a-fA-F-]*$/.test(value))
+    return "El identificador de instalación solo contiene números, letras de A a F y guiones.";
   if (
     (field.type === "id" || field.format === "document") &&
     !/^[0-9]*$/.test(value)
@@ -602,6 +617,14 @@ export function fieldError(field: Field, raw: unknown): string {
   const value =
     field.type === "password" ? String(raw ?? "") : String(raw ?? "").trim();
   if (!value) return field.required ? "Campo obligatorio." : "";
+  if (
+    field.format === "uuid" &&
+    (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    ) ||
+      /^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(value))
+  )
+    return "Pegá un identificador UUID de instalación válido, copiado desde la app del empleado.";
   const characters = inputError(field, value);
   if (characters) return characters;
   try {

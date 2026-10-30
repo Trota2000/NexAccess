@@ -40,4 +40,7 @@ export const LayoutDashboard = View,
 export const Building2 = View,
   Upload = View,
   Trash2 = View;
-export const Nfc = View, LockKeyhole = View, Smartphone = View;
+export const Nfc = View,
+  LockKeyhole = View,
+  Smartphone = View;
+export const Copy = View;

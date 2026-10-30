@@ -132,6 +132,7 @@ export function writeReceipt(key: string, result: unknown): Row {
   }
   const allowed = [
     "id",
+    "maskedCode",
     ...resource(key).columns,
     ...resource(key).fields.map((f) => f.key),
     "revokedAt",

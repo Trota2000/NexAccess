@@ -145,8 +145,27 @@ add("users.access", "PUT", "/users/{id}/access", admin, [
   "mobileAccessEnabled",
 ]);
 add("credentials.digital", "POST", "/credentials/digital/{id}", security, [
+  "installationId",
   "name",
   "expiresAt",
+]);
+add("reports.options", "GET", "/reports/options", all);
+add("reports.devices", "GET", "/reports/devices", all);
+add("reports.generate", "POST", "/reports/generate", all, [
+  "type",
+  "format",
+  "from",
+  "to",
+  "employeeIds",
+  "areaIds",
+  "deviceIds",
+  "attendanceTypes",
+  "attendanceSources",
+  "accessResults",
+  "groupBy",
+  "columns",
+  "includeSummary",
+  "includeDetails",
 ]);
 add("audit.list", "GET", "/audit", admin);
 // Documented for coverage, intentionally unavailable to the Bearer UI.

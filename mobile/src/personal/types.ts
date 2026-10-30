@@ -40,7 +40,7 @@ export const personalCredential = z.object({
   expiresAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export type PersonalCredential = z.infer<typeof personalCredential>;
-// Current C# DTO uses `credential`; the supplied manual says `credentialCode`.
+// Current C# DTO and endpoint manual use `credential`.
 // Keep this secret separate from card/history models. HCE provisioning is not implemented.
 export const nfcCredentialPayload = z.object({
   credentialId: identifier,

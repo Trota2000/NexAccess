@@ -201,6 +201,7 @@ export class ApiClient {
       csv?: boolean;
       formData?: FormData;
       binary?: boolean;
+      pdf?: boolean;
     } = {},
   ): Promise<unknown> {
     if (!/^\/[a-z0-9/-]+$/.test(path))
@@ -261,7 +262,12 @@ export class ApiClient {
       (options.formData &&
         (operation.id !== "empresa.logo.upload" || options.body)) ||
       (operation.id === "empresa.logo.upload" && !options.formData) ||
-      (options.binary && (operation.id !== "empresa.logo.get" || options.csv))
+      (options.binary &&
+        (operation.id !== "empresa.logo.get" || options.csv || options.pdf)) ||
+      (options.pdf &&
+        (operation.id !== "reports.generate" ||
+          options.csv ||
+          options.body?.format !== "PDF"))
     )
       throw new ApiError(
         "Formato de solicitud no permitido para esta operación.",
@@ -290,11 +296,13 @@ export class ApiClient {
           credentials: "omit",
           redirect: "error",
           headers: {
-            Accept: options.binary
-              ? "image/png, image/jpeg"
-              : options.csv
-                ? "text/csv"
-                : "application/json",
+            Accept: options.pdf
+              ? "application/pdf"
+              : options.binary
+                ? "image/png, image/jpeg"
+                : options.csv
+                  ? "text/csv"
+                  : "application/json",
             ...(options.body ? { "Content-Type": "application/json" } : {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
@@ -305,6 +313,37 @@ export class ApiClient {
               : {}),
         },
       );
+      if (options.pdf && response.ok) {
+        if (
+          (response.headers.get("content-type") ?? "")
+            .split(";")[0]
+            .trim()
+            .toLowerCase() !== "application/pdf"
+        )
+          throw new ApiError(
+            "El servidor no devolvió un PDF válido.",
+            0,
+            "CONTRACT_ERROR",
+          );
+        const blob = await response.blob();
+        if (
+          !blob.size ||
+          blob.size > 50 * 1024 * 1024 ||
+          (await blob.slice(0, 5).text()) !== "%PDF-"
+        )
+          throw new ApiError(
+            "El archivo recibido no es un PDF válido o supera 50 MB.",
+            0,
+            "CONTRACT_ERROR",
+          );
+        if (version !== this.epoch)
+          throw new ApiError(
+            "La sesión cambió; se descartó el archivo.",
+            0,
+            "STALE_REQUEST",
+          );
+        return blob;
+      }
       if (options.binary && response.ok) {
         const contentType = (response.headers.get("content-type") ?? "")
           .split(";")[0]

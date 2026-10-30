@@ -19,6 +19,7 @@ import CalendarField from "./CalendarField";
 import CompanySettings from "./CompanySettings";
 import BusyOverlay from "./BusyOverlay";
 import MetricChart from "./MetricChart";
+import ServerReports from "./ServerReports";
 import { calendarInstant, localParts } from "./dates";
 import { display, pageOf, resource } from "./resources";
 import { loadMetrics, Metric, RelatedFlow } from "./workflows";
@@ -186,9 +187,11 @@ function Dashboard({
   );
 }
 function Reports({
+  client,
   session,
   onOpen,
 }: {
+  client: ApiClient;
   session: Session;
   onOpen: (f: RelatedFlow) => void;
 }) {
@@ -204,6 +207,11 @@ function Reports({
   return (
     <>
       <Text style={s.title}>Reportes</Text>
+      <ServerReports
+        key={`${session.user.id}:${session.user.role}`}
+        client={client}
+        session={session}
+      />
       <Text style={s.text}>
         Elegí el informe, revisá el rango y aplicá filtros. Los CSV se generan
         en el servidor con el mismo criterio de consulta.
@@ -461,7 +469,8 @@ export default function Overview({
 }) {
   if (view === "dashboard")
     return <Dashboard client={client} session={session} onOpen={onOpen} />;
-  if (view === "reportes") return <Reports session={session} onOpen={onOpen} />;
+  if (view === "reportes")
+    return <Reports client={client} session={session} onOpen={onOpen} />;
   if (view === "alertas" && ["ADMIN", "SEGURIDAD"].includes(session.user.role))
     return <Incidents client={client} onOpen={onOpen} />;
   return <Settings client={client} session={session} />;

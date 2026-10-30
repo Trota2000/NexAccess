@@ -28,7 +28,7 @@ const defaultClient = () =>
       process.env.EXPO_PUBLIC_API_URL ||
       (Platform.OS === "web"
         ? "/api/v1"
-        : "https://nexaccess.rattenkoenig.net/api/v1"),
+        : "https://nx.rattenkoenig.net/api/v1"),
     secrets,
     fetch,
     () => nfc.disable(),
