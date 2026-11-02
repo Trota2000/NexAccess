@@ -1,54 +1,67 @@
-# Membrete de los PDF de la web
+# PDF de la web: membrete y disposición
 
-Reportes añade el membrete al PDF recibido de `/reports/generate`, reservando un
-espacio por encima de cada página. El contenido original se conserva como PDF
-vectorial, ajustado proporcionalmente para no tapar tablas, resúmenes o pies.
-Se mantienen filtros, agrupaciones, columnas, rango de fechas, páginas y formato
-JSON. No se modifica el backend ni se vuelve a consultar el detalle del reporte.
+Reportes genera su PDF en el navegador con los datos estructurados de
+`POST /reports/generate` (JSON). No necesita modificar la plantilla del backend.
+Usa `pdf-lib`, ya instalado: no se agregan dependencias.
 
-Asistencia e Historial reutilizan la misma identidad empresarial en sus PDF HTML.
+## Disposición
 
-## Prioridad de identidad
+- Un único membrete por página, sin el segundo cabecero NexAccess del PDF del servidor.
+- Título del reporte, fechas y metadatos a la izquierda; filtros a la derecha.
+- Resúmenes y agrupaciones calculados por el backend, sin recalcular contadores.
+- Todas las filas y columnas seleccionadas, en el orden recibido. Sin selección,
+  las mismas cinco columnas predeterminadas del servidor actual.
+- Paginación automática, cabecera de tabla repetida y continuación de celdas largas.
+- Pie Control de asistencia o Control de accesos, con número de página.
+- Fechas UTC convertidas a America/Asuncion; se conserva la zona en los metadatos.
+- Texto WinAnsi seleccionable. Las líneas con otros caracteres se dibujan con
+  la fuente del navegador, sin sustituir ni eliminar caracteres.
+
+Asistencia e Historial mantienen su exportación HTML y usan la misma identidad:
+fechas y total a la izquierda, filtros a la derecha, pie según el módulo, sin la
+nota técnica sobre los horarios del CSV.
+
+## Identidad
 
 1. Empresa y logo configurados: se usan ambos.
-2. Empresa configurada sin logo: se conservan razón social y demás datos, usando
-   el logo de NexAccess como respaldo.
-3. Empresa no configurada (`EMPRESA_NOT_CONFIGURED`): membrete NexAccess con el
-   logo incluido en la aplicación.
+2. Empresa sin logo: datos empresariales con logo NexAccess de respaldo.
+3. Empresa no configurada (`EMPRESA_NOT_CONFIGURED`): logo NexAccess incluido.
 
-Un error de autenticación, permisos, red o descarga de un logo configurado no se
-interpreta como ausencia de empresa: se muestra el error para poder reintentar.
-Los logos se incorporan al documento como datos de imagen, sin URLs con tokens.
+Errores de autenticación, permisos, red o descarga del logo no se interpretan
+como ausencia de empresa. Un membrete demasiado extenso produce un error explícito.
 
-## Implementación y alcance
+## Auditoría y consistencia
 
-- `integration/source/letterhead.ts`: identidad y encabezado HTML compartidos.
-- `reportBranding.ts`: selección de logo empresarial o asset NexAccess.
-- `serverReportPdf.web.ts`: encabezado rasterizado a alta resolución, con ajuste
-  de texto y soporte de los caracteres de la empresa proporcionado por el navegador.
-- `stampPdf.ts`: composición del encabezado y cada página del PDF original.
-- `serverReportPdf.ts`: conserva la descarga administrativa nativa existente; esta
-  mejora de Reportes se aplica a la web. La app Android personal no contiene este módulo.
+El backend registra REPORT_EXPORT únicamente al generar PDF, no JSON.
+Para conservarlo, la exportación web realiza estas solicitudes con los mismos
+filtros, columnas, agrupaciones y opciones:
 
-`pdf-lib` se carga en el paquete web para componer PDF existentes y `expo-asset`
-resuelve el logo empaquetado, también cuando cambia la URL del sitio. Ambas apps
-declaran las dependencias porque el repositorio sincroniza el código API y verifica
-los archivos web en ambos proyectos. No hace falta reconstruir el APK personal.
+1. JSON: obtener y validar el conjunto de datos completo.
+2. Preparar el PDF localmente; si falla, no solicitar la auditoría.
+3. PDF: mantener la solicitud original que verifica permisos y registra REPORT_EXPORT.
+   Ese archivo no se usa para el diseño del documento descargado.
+4. JSON: verificar que filas, total y agrupaciones no cambiaron durante el proceso.
+   Si cambiaron, no descargar y pedir reintentar.
 
-Los reportes son documentos generados, sin formularios interactivos ni firmas.
-La composición mantiene texto y gráficos del cuerpo, pero no se ofrece como editor
-de anotaciones, adjuntos o firmas PDF. Un membrete que no cabe legiblemente en la
-página produce un error explícito, sin recortar sus datos.
+Esto implica tres consultas y más tiempo y tráfico que la descarga original.
+No es una transacción atómica: el frontend no puede garantizar el mismo snapshot
+entre solicitudes. Para una garantía transaccional estricta, el backend necesitaría
+un identificador de snapshot o una exportación/auditoría basada en ese identificador.
+Si falla la comprobación final puede existir una entrada de auditoría, porque el
+backend sí generó correctamente su PDF.
 
-## Verificación
+La descarga JSON del usuario mantiene una sola solicitud. La descarga administrativa
+nativa conserva el PDF del servidor; la app Android personal no contiene este módulo.
+No hace falta reconstruir el APK personal.
 
-- Pruebas de selección de identidad: con empresa/logo, empresa sin logo y empresa
-  ausente. Se conservan errores de acceso, red y logo.
-- Validación de logo y escape de campos HTML.
-- Composición multipágina, horizontal, vertical y con rotación, sin modificar la
-  entrada ni perder páginas.
-- Pruebas existentes de filtros, fechas, permisos y transporte PDF/JSON.
-- Revisión visual en Chromium con datos sintéticos y nombres/direcciones largos;
-  comprobación de última fila de cada página mediante extracción de texto.
+## Archivos
 
-No se ha realizado una descarga autenticada contra producción con datos reales.
+- `reportSnapshot.ts`: validación, solicitudes y comprobación de cambios.
+- `reportPdf.ts`: maquetación, tablas, resúmenes y paginación.
+- `serverReportPdf.web.ts`: membrete y representación Unicode en el navegador.
+- `reportBranding.ts`, `letterhead.ts`: identidad empresarial compartida.
+- `ServerReports.tsx`: integración en la exportación web existente.
+
+Las pruebas cubren contrato, datos incompletos, auditoría, cambios concurrentes,
+fallos y paginación. La revisión visual utiliza datos sintéticos.
+No se ha verificado una exportación autenticada en producción.

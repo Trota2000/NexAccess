@@ -76,6 +76,13 @@ function filterValue(key: string, value: unknown) {
   }
   return String(value);
 }
+
+export function reportFooter(title: string): string {
+  if (/asistencia/i.test(title)) return "Control de asistencia";
+  if (/accesos?/i.test(title)) return "Control de accesos";
+  return title;
+}
+
 export function reportHtml(
   csv: string,
   title: string,
@@ -84,9 +91,18 @@ export function reportHtml(
 ): string {
   const identity = letterheadHtml(branding);
   const [headers, ...rows] = parseCsv(csv);
-  const summary = Object.entries(filters)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(([k, v]) => `${filterTitles[k] ?? k}: ${filterValue(k, v)}`)
-    .join(" · ");
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexAccess · ${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#263e45;font-size:10px}h1{color:#286c64;font-size:21px}${letterheadCss}.report-footer{margin-top:16px;color:#5b6a70;font-size:9px}p{line-height:1.5}table{border-collapse:collapse;width:100%;table-layout:fixed}th{background:#dcebe5;text-align:left}th,td{border:1px solid #cedcd7;padding:7px;overflow-wrap:anywhere}thead{display:table-header-group}tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f5}</style></head><body>${identity}<h1>${escapeHtml(title)}</h1><p>${escapeHtml(summary)}</p><p>${rows.length} registros · Horarios del CSV: zona configurada en el servidor</p><table><thead><tr>${headers.map((h) => `<th>${escapeHtml(columnTitles[h] ?? h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>${!rows.length ? "<p>Sin registros para los filtros seleccionados.</p>" : ""}<footer class="report-footer">Generado con NexAccess</footer></body></html>`;
+  const entries = Object.entries(filters).filter(
+    ([, value]) => value !== undefined && value !== null && value !== "",
+  );
+  const dates = entries.filter(([key]) => key === "from" || key === "to");
+  const applied = entries.filter(([key]) => key !== "from" && key !== "to");
+  const lines = (values: [string, unknown][]) =>
+    values
+      .map(
+        ([key, value]) =>
+          `<p>${escapeHtml(filterTitles[key] ?? key)}: ${escapeHtml(filterValue(key, value))}</p>`,
+      )
+      .join("");
+  const metadata = `<div class="report-meta"><section class="report-dates">${lines(dates)}<p>${rows.length} registros</p></section><section class="report-filters"><h2>Filtros aplicados</h2>${applied.length ? lines(applied) : "<p>Todos</p>"}</section></div>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>NexAccess · ${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#263e45;font-size:10px}h1{color:#286c64;font-size:21px}${letterheadCss}.report-meta{display:flex;align-items:flex-start;gap:32px;margin:16px 0 20px;break-inside:avoid}.report-dates,.report-filters{flex:1;min-width:0;overflow-wrap:anywhere}.report-meta p{margin:4px 0}.report-filters h2{font-size:11px;margin:0 0 6px;color:#286c64}.report-footer{margin-top:16px;border-top:1px solid #cedcd7;padding-top:8px;color:#5b6a70;font-size:9px}p{line-height:1.5}table{border-collapse:collapse;width:100%;table-layout:fixed}th{background:#dcebe5;text-align:left}th,td{border:1px solid #cedcd7;padding:7px;overflow-wrap:anywhere}thead{display:table-header-group}tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f5}</style></head><body>${identity}<h1>${escapeHtml(title)}</h1>${metadata}<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(columnTitles[h] ?? h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>${!rows.length ? "<p>Sin registros para los filtros seleccionados.</p>" : ""}<footer class="report-footer">${escapeHtml(reportFooter(title))}</footer></body></html>`;
 }

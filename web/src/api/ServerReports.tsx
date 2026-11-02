@@ -24,7 +24,8 @@ import { reportBody, reportOptions, ReportOptions } from "./reportContract";
 import { downloadReport } from "./reportDownload";
 import CalendarField from "./CalendarField";
 import { loadReportBranding } from "./reportBranding";
-import { brandServerReport } from "./serverReportPdf";
+import { renderWebReport } from "./serverReportPdf";
+import { exportReportSnapshot } from "./reportSnapshot";
 
 const captions: Record<string, string> = {
   EMPLOYEE: "Empleado",
@@ -238,17 +239,27 @@ export default function ServerReports({
     try {
       const body = reportBody(options, report, draft),
         format = body.format as "PDF" | "JSON";
-      let result = await client.request("/reports/generate", {
-        method: "POST",
-        body,
-        pdf: format === "PDF",
-      });
-      if (!mounted.current) return;
+      let result: unknown;
       if (format === "PDF" && Platform.OS === "web") {
+        if (!report.formats.includes("JSON"))
+          throw new Error(
+            "El servidor debe habilitar los datos JSON para preparar este PDF.",
+          );
         const branding = await loadReportBranding(client);
         if (!mounted.current) return;
-        result = await brandServerReport(result as Blob, branding);
-      }
+        result = await exportReportSnapshot(
+          client,
+          body,
+          (snapshot) =>
+            renderWebReport(snapshot, body, session.user.id, branding),
+          () => mounted.current,
+        );
+      } else
+        result = await client.request("/reports/generate", {
+          method: "POST",
+          body,
+          pdf: format === "PDF",
+        });
       if (!mounted.current) return;
       await downloadReport(result, format);
       if (mounted.current)

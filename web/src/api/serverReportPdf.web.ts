@@ -1,6 +1,52 @@
 import { CompanyBranding } from "./company";
 import { letterheadData } from "./letterhead";
 import { stampPdf } from "./stampPdf";
+import { renderReportPdf, ReportTextFallback } from "./reportPdf";
+import { ReportSnapshot } from "./reportSnapshot";
+import { Row } from "./client";
+
+export async function renderWebReport(
+  snapshot: ReportSnapshot,
+  request: Row,
+  userId: number,
+  branding: CompanyBranding,
+): Promise<Blob> {
+  await document.fonts.ready;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("El navegador no permite preparar el PDF.");
+  const font = (size: number, bold: boolean) =>
+    `${bold ? "600" : "400"} ${size}px Arial, sans-serif`;
+  // WinAnsi text remains selectable. Characters outside it (e.g. Guaraní,
+  // Unicode symbols) use the browser font instead of being removed/replaced.
+  const fallback: ReportTextFallback = {
+    measure(text, size, bold) {
+      ctx.font = font(size, bold);
+      return ctx.measureText(text).width;
+    },
+    image(text, size, bold, color) {
+      ctx.font = font(size, bold);
+      const width = Math.ceil(ctx.measureText(text).width) + 2,
+        height = size * 1.5;
+      canvas.width = Math.ceil(width * 3);
+      canvas.height = Math.ceil(height * 3);
+      ctx.scale(3, 3);
+      ctx.font = font(size, bold);
+      ctx.fillStyle = color;
+      ctx.textBaseline = "top";
+      ctx.fillText(text, 0, 0);
+      return { image: canvas.toDataURL("image/png"), width, height };
+    },
+  };
+  const bytes = await renderReportPdf(
+    snapshot,
+    request,
+    userId,
+    (width) => renderLetterhead(branding, width),
+    fallback,
+  );
+  return new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
+}
 
 function linesFor(
   ctx: CanvasRenderingContext2D,
