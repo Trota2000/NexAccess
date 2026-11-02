@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,8 @@ import { labels } from "./resources";
 import { reportBody, reportOptions, ReportOptions } from "./reportContract";
 import { downloadReport } from "./reportDownload";
 import CalendarField from "./CalendarField";
+import { loadReportBranding } from "./reportBranding";
+import { brandServerReport } from "./serverReportPdf";
 
 const captions: Record<string, string> = {
   EMPLOYEE: "Empleado",
@@ -235,11 +238,17 @@ export default function ServerReports({
     try {
       const body = reportBody(options, report, draft),
         format = body.format as "PDF" | "JSON";
-      const result = await client.request("/reports/generate", {
+      let result = await client.request("/reports/generate", {
         method: "POST",
         body,
         pdf: format === "PDF",
       });
+      if (!mounted.current) return;
+      if (format === "PDF" && Platform.OS === "web") {
+        const branding = await loadReportBranding(client);
+        if (!mounted.current) return;
+        result = await brandServerReport(result as Blob, branding);
+      }
       if (!mounted.current) return;
       await downloadReport(result, format);
       if (mounted.current)
@@ -273,11 +282,6 @@ export default function ServerReports({
           "refresh",
         )}
       </View>
-      <Text style={s.muted}>
-        Para incluir el membrete de tu empresa, usá Exportar PDF desde
-        Asistencia o Historial de accesos. Este generador descarga el PDF con el
-        encabezado actual del servicio.
-      </Text>
       {!!error && (
         <Text accessibilityRole="alert" style={s.error}>
           {error}
