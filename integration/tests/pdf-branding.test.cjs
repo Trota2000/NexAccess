@@ -56,8 +56,8 @@ test("the same letterhead contains company identity or NexAccess default, escapi
     assert.match(html, /2 registros/);
   }
   const fallback = letterheadHtml({ logoDataUrl: logo });
-  assert.match(fallback, /<h2>NexAccess<\/h2>/);
-  assert.match(fallback, /Control de accesos y asistencia/);
+  assert.ok(!fallback.includes("<h2>NexAccess</h2>"));
+  assert.ok(!fallback.includes("Control de accesos y asistencia"));
   assert.ok(fallback.includes(logo));
   assert.throws(() =>
     letterheadData({ logoDataUrl: "https://example.test/logo.png" }),

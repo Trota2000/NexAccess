@@ -76,6 +76,38 @@ test("PDF escapes server-controlled HTML and preserves an empty export as empty"
   assert.throws(() => parseCsv('id,nombre\n1,"incompleto'));
   assert.throws(() => parseCsv("id,nombre\n1"));
 });
+
+test("PDF places dates and applied filters in separate columns with a report-specific footer", () => {
+  for (const [title, footer] of [
+    ["Asistencia", "Control de asistencia"],
+    ["Historial de accesos", "Control de accesos"],
+  ]) {
+    const html = reportHtml("id,empleado\n1,Ana", title, {
+      from: "2026-11-01T03:00:00Z",
+      to: "2026-11-03T02:59:59Z",
+      employeeId: 12,
+      deviceId: 4,
+      result: "AUTORIZADO",
+    });
+    const dates = html.match(
+      /<section class="report-dates">([\s\S]*?)<\/section>/,
+    )[1];
+    const applied = html.match(
+      /<section class="report-filters">([\s\S]*?)<\/section>/,
+    )[1];
+    assert.match(dates, /Desde: 01\/11\/2026/);
+    assert.match(dates, /Hasta: 02\/11\/2026/);
+    assert.ok(!dates.includes("ID de empleado"));
+    assert.match(applied, /ID de empleado: 12/);
+    assert.match(applied, /ID de lector: 4/);
+    assert.match(applied, /AUTORIZADO/);
+    assert.ok(
+      html.includes(`<footer class="report-footer">${footer}</footer>`),
+    );
+    assert.ok(!html.includes("Horarios del CSV"));
+    assert.ok(!html.includes("Generado con NexAccess"));
+  }
+});
 test("dashboard period is sent only to event/attendance counters and does not change current inventory counts", async () => {
   const requests = [];
   const client = {

@@ -8,6 +8,20 @@ JSON. No se modifica el backend ni se vuelve a consultar el detalle del reporte.
 
 Asistencia e Historial reutilizan la misma identidad empresarial en sus PDF HTML.
 
+## Disposición del reporte
+
+Asistencia e Historial muestran el período y el total a la izquierda y los filtros
+aplicados a la derecha. Se conserva cada filtro y cada registro, retirando la nota
+técnica sobre los horarios del CSV. El pie identifica Control de asistencia o
+Control de accesos. El membrete predeterminado usa el logo NexAccess sin repetir
+otro título NexAccess ni una descripción general.
+
+En Reportes, el título, metadatos, filtros y pie interiores son parte del PDF del
+backend. Su disposición se ajusta en `QuestPdfReportGenerator.cs`: eliminar el
+encabezado interno duplicado, ubicar los filtros a la derecha y usar el pie según
+el tipo de reporte. Esa plantilla debe publicarse por separado en el backend;
+actualizar únicamente el frontend no mueve el contenido que ya contiene ese PDF.
+
 ## Prioridad de identidad
 
 1. Empresa y logo configurados: se usan ambos.
