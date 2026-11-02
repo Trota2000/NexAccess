@@ -22,7 +22,7 @@ export const companyFields = [
 export type CompanyKey = (typeof companyFields)[number]["key"];
 export type CompanyDraft = Record<CompanyKey, string>;
 export interface CompanyBranding {
-  company: Company;
+  company?: Company;
   logoDataUrl?: string;
 }
 export function companyDraft(company?: Company | null): CompanyDraft {

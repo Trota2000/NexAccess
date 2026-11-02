@@ -57,7 +57,7 @@ import {
 import CalendarField from "./CalendarField";
 import BusyOverlay from "./BusyOverlay";
 import { exportPdf } from "./pdf";
-import { loadCompanyBranding } from "./company";
+import { loadReportBranding } from "./reportBranding";
 import { ApiClient, ApiError, id, Page, Row, Session } from "./client";
 import Overview, { extraModules } from "./Overview";
 import {
@@ -1161,7 +1161,7 @@ function Workspace({
         csv: true,
       })) as string;
       if (asPdf)
-        await exportPdf(csv, r.title, query, await loadCompanyBranding(client));
+        await exportPdf(csv, r.title, query, await loadReportBranding(client));
       else if (Platform.OS === "web") {
         const url = URL.createObjectURL(
           new Blob([csv], { type: "text/csv;charset=utf-8" }),
