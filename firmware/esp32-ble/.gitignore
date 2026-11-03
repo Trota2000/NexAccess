@@ -1,0 +1,3 @@
+.pio/
+src/config_secrets.h
+src/nexaccess_ca.h

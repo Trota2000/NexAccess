@@ -3,9 +3,15 @@ name: Build NexAccess Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [feature/android-apk-build, feature/nfc-hce-prototype]
+    branches:
+      [
+        feature/android-apk-build,
+        feature/nfc-hce-prototype,
+        feature/bluetooth-access,
+      ]
     paths:
       - "mobile/**"
+      - "firmware/**"
       - ".github/workflows/android-apk.yml"
 
 permissions:
@@ -23,6 +29,24 @@ env:
   CI: "1"
 
 jobs:
+  firmware:
+    name: Verificar firmware ESP32 BLE
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar parser NXB1 y fragmentación
+        run: g++ -std=c++11 -Wall -Wextra -Werror firmware/esp32-ble/tests/frame-test.cpp -o /tmp/nexaccess-ble-test && /tmp/nexaccess-ble-test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar PlatformIO
+        run: pip install platformio
+      - name: Configuración sintética para compilar (sin secretos del lector)
+        run: |
+          cp firmware/esp32-ble/src/config_secrets.example.h firmware/esp32-ble/src/config_secrets.h
+          printf '#pragma once\nstatic const char NEXACCESS_CA[] = "";\n' > firmware/esp32-ble/src/nexaccess_ca.h
+      - name: Compilar ESP32-S3 sin cargar el dispositivo
+        run: pio run -d firmware/esp32-ble
   apk:
     name: APK instalable de prueba
     runs-on: ubuntu-24.04
@@ -58,6 +82,8 @@ jobs:
         run: npm run lint
       - name: Probar protocolo NFC nativo
         run: bash scripts/test-hce.sh
+      - name: Probar protocolo Bluetooth nativo
+        run: bash scripts/test-ble.sh
       - name: Generar Android con Expo CNG
         run: npx expo prebuild --platform android --no-install
       - name: Compilar release con firma de prueba
@@ -76,9 +102,12 @@ jobs:
           mkdir -p ../artifacts
           cp "$apk" ../artifacts/NexAccess-prueba.apk
           "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
-          grep -F "versionCode='4'" ../artifacts/APK-manifest.txt
-          grep -F "versionName='1.2.1'" ../artifacts/APK-manifest.txt
+          grep -F "versionCode='5'" ../artifacts/APK-manifest.txt
+          grep -F "versionName='1.3.0'" ../artifacts/APK-manifest.txt
           "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.hce.NexAccessHceService'
+          "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.ble.NexAccessBleService'
+          grep -F 'android.permission.BLUETOOTH_SCAN' ../artifacts/APK-manifest.txt
+          grep -F 'android.permission.BLUETOOTH_CONNECT' ../artifacts/APK-manifest.txt
           # Release optimization may rename res/xml/nexaccess_hce.xml.
           # Locate the compiled XML by its unique AID, then inspect it with aapt.
           python3 - "$apk" <<'PYAPK'
@@ -98,7 +127,7 @@ jobs:
           grep -F 'F04E4558414301' ../artifacts/NFC-service.xmltree.txt
           cd ../artifacts
           sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
-          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.2.1 (4)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo del prototipo compartido; verificar transporte PN532" > BUILD.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.3.0 (5)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo" "Bluetooth BLE: NXB1; requiere firmware esp32-ble y prueba fisica" > BUILD.txt
       - name: Publicar APK descargable
         id: artifact
         uses: actions/upload-artifact@v4

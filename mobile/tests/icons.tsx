@@ -44,3 +44,4 @@ export const Nfc = View,
   LockKeyhole = View,
   Smartphone = View;
 export const Copy = View;
+export const Bluetooth = View;
