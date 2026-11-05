@@ -14,6 +14,8 @@ import PersonalCard from "../src/personal/Card";
 import PersonalHistory from "../src/personal/History";
 import PersonalLogin from "../src/personal/Login";
 import { setTheme } from "../src/api/Theme";
+import { bluetooth } from "../src/personal/bluetooth";
+import { nfc } from "../src/personal/nfc";
 jest.setTimeout(20000);
 
 const user = {
@@ -112,10 +114,21 @@ beforeEach(async () => {
   await act(async () => setTheme("light"));
 });
 afterEach(async () => {
+  jest.restoreAllMocks();
   await act(async () => setTheme("light"));
 });
 
-test("personal card masks document, contains only personal controls and persists all three NFC preferences", async () => {
+test("personal card migrates the stricter setting and applies one selection to NFC and Bluetooth", async () => {
+  const key = "nexaccess.personal.preferences.v1";
+  await AsyncStorage.setItem(key, JSON.stringify({ nfcMode: "always" }));
+  const bleState = await bluetooth.state();
+  jest.spyOn(bluetooth, "state").mockResolvedValue({
+    ...bleState,
+    available: true,
+    mode: "foreground",
+  });
+  const setBleMode = jest.spyOn(bluetooth, "setMode");
+  const setNfcMode = jest.spyOn(nfc, "setMode");
   const { client } = setup();
   await client.login("ana", "password");
   await render(
@@ -128,21 +141,28 @@ test("personal card masks document, contains only personal controls and persists
   expect(screen.getByText("Empleado · #42")).toBeTruthy();
   expect(screen.queryByText("Dashboard")).toBeNull();
   expect(screen.getByText("Integración NFC pendiente")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /^Modo Bluetooth/ })).toBeNull();
+  expect(setNfcMode).toHaveBeenLastCalledWith("foreground");
+  expect(setBleMode).toHaveBeenLastCalledWith("foreground");
   await fireEvent.press(
-    screen.getByRole("button", { name: "Modo NFC: Con pantalla desbloqueada" }),
+    screen.getByRole("button", {
+      name: "Modo de acceso: Solo con la app abierta",
+    }),
   );
   expect(screen.getAllByRole("radio")).toHaveLength(3);
   await fireEvent.press(
-    screen.getByRole("radio", { name: "Solo con la app abierta" }),
+    screen.getByRole("radio", { name: "Con pantalla desbloqueada" }),
   );
   await waitFor(() =>
     expect(
-      screen.getByRole("button", { name: "Modo NFC: Solo con la app abierta" }),
+      screen.getByRole("button", {
+        name: "Modo de acceso: Con pantalla desbloqueada",
+      }),
     ).toBeTruthy(),
   );
-  expect(
-    await AsyncStorage.getItem("nexaccess.personal.preferences.v1"),
-  ).toContain('"nfcMode":"foreground"');
+  expect(setNfcMode).toHaveBeenLastCalledWith("unlocked");
+  expect(setBleMode).toHaveBeenLastCalledWith("unlocked");
+  expect(await AsyncStorage.getItem(key)).toContain('"accessMode":"unlocked"');
 });
 
 test("employee can copy only the persistent installation identifier for administrative issuance", async () => {

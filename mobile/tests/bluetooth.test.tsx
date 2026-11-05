@@ -51,13 +51,11 @@ test("missing credential blocks enabling and unavailable native module remains e
     ),
   ).toBeTruthy();
   await view.unmount();
-  jest
-    .mocked(bluetooth.state)
-    .mockResolvedValue({
-      ...base,
-      available: false,
-      message: "Instalá el APK Bluetooth.",
-    });
+  jest.mocked(bluetooth.state).mockResolvedValue({
+    ...base,
+    available: false,
+    message: "Instalá el APK Bluetooth.",
+  });
   await render(<BluetoothAccess />);
   expect(await screen.findByText("Instalá el APK Bluetooth.")).toBeTruthy();
   expect(bluetooth.enable).not.toHaveBeenCalled();
@@ -71,18 +69,4 @@ test("permission/start failures are displayed without enabling a fake service", 
   await waitFor(() => expect(toggle.props.disabled).toBe(false));
   await fireEvent(toggle, "valueChange", true);
   expect(await screen.findByText("Faltan permisos")).toBeTruthy();
-});
-test("mode selection uses the native setting and preserves choices", async () => {
-  await render(<BluetoothAccess />);
-  await fireEvent.press(
-    await screen.findByRole("button", {
-      name: "Modo Bluetooth: Solo con la app abierta",
-    }),
-  );
-  await fireEvent.press(
-    await screen.findByRole("button", { name: "Con pantalla desbloqueada" }),
-  );
-  await waitFor(() =>
-    expect(bluetooth.setMode).toHaveBeenCalledWith("unlocked"),
-  );
 });

@@ -13,10 +13,18 @@ import { setTheme } from "../api/Theme";
 import { PersonalClient } from "./client";
 import { secrets } from "./storage";
 import { nfc, NfcCapabilities } from "./nfc";
-import { NfcMode } from "./types";
+import { NfcMode, nfcModes } from "./types";
 import { bluetooth } from "./bluetooth";
 
 const preferencesKey = "nexaccess.personal.preferences.v1";
+async function applyAccessMode(mode: NfcMode) {
+  const results = await Promise.allSettled([
+    nfc.setMode(mode),
+    bluetooth.setMode(mode),
+  ]);
+  if (results.some((result) => result.status === "rejected"))
+    throw new Error("No se pudo aplicar el modo a NFC y Bluetooth.");
+}
 const initialCapabilities: NfcCapabilities = {
   available: false,
   enabled: false,
@@ -57,9 +65,10 @@ const defaultClient = () =>
 type PersonalContext = {
   client: PersonalClient;
   preferencesReady: boolean;
-  nfcMode: NfcMode;
+  accessMode: NfcMode;
+  modeNotice: string;
   capabilities: NfcCapabilities;
-  setNfcMode: (mode: NfcMode) => Promise<void>;
+  setAccessMode: (mode: NfcMode) => Promise<void>;
   saveTheme: (theme: "light" | "dark") => Promise<void>;
 };
 const Context = createContext<PersonalContext | null>(null);
@@ -72,7 +81,8 @@ export function SessionProvider({
 }) {
   const client = useMemo(() => provided ?? defaultClient(), [provided]);
   const [preferencesReady, setReady] = useState(false);
-  const [nfcMode, changeMode] = useState<NfcMode>("unlocked");
+  const [accessMode, changeMode] = useState<NfcMode>("unlocked");
+  const [modeNotice, setModeNotice] = useState("");
   const [capabilities, setCapabilities] = useState(initialCapabilities);
   const preferenceWrites = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
@@ -83,15 +93,29 @@ export function SessionProvider({
         const prefs = raw ? JSON.parse(raw) : {};
         if (prefs.theme === "dark" || prefs.theme === "light")
           setTheme(prefs.theme);
-        if (
-          ["foreground", "unlocked", "always"].includes(prefs.nfcMode) &&
-          active
-        ) {
-          changeMode(prefs.nfcMode);
-          await nfc.setMode(prefs.nfcMode);
-        } else await nfc.setMode("unlocked");
+        const saved = nfcModes.find(({ key }) => key === prefs.accessMode);
+        let mode = saved?.key;
+        if (!mode) {
+          const previousNfc =
+            nfcModes.find(({ key }) => key === prefs.nfcMode)?.key ??
+            "unlocked";
+          const previousBle = await bluetooth.state();
+          // Keep the more restrictive setting when migrating two old choices.
+          mode = nfcModes.find(
+            ({ key }) =>
+              key === previousNfc ||
+              (previousBle.available && key === previousBle.mode),
+          )!.key;
+        }
+        if (!active) return;
+        await applyAccessMode(mode);
+        if (!saved) await preference("accessMode", mode);
+        if (active) changeMode(mode);
       } catch {
-        /* Invalid non-secret preferences fall back to system/defaults. */
+        if (active)
+          setModeNotice(
+            "No se pudo restaurar el modo. Elegilo en Uso de la tarjeta.",
+          );
       }
       if (active) setReady(true);
       try {
@@ -143,9 +167,10 @@ export function SessionProvider({
       value={{
         client,
         preferencesReady,
-        nfcMode,
+        accessMode,
+        modeNotice,
         capabilities,
-        async setNfcMode(mode) {
+        async setAccessMode(mode) {
           if (
             mode === "always" &&
             capabilities.available &&
@@ -154,9 +179,21 @@ export function SessionProvider({
             throw new Error(
               "Este teléfono no permite NFC con pantalla bloqueada o apagada.",
             );
-          await nfc.setMode(mode);
-          await preference("nfcMode", mode);
+          try {
+            await applyAccessMode(mode);
+            await preference("accessMode", mode);
+          } catch (error) {
+            try {
+              await applyAccessMode(accessMode);
+            } catch {
+              setModeNotice(
+                "Volvé a elegir el modo para sincronizar NFC y Bluetooth.",
+              );
+            }
+            throw error;
+          }
           changeMode(mode);
+          setModeNotice("");
         },
         async saveTheme(theme) {
           await preference("theme", theme);
@@ -181,6 +218,7 @@ export function usePersonal() {
     ...session,
     notice:
       session.notice ||
+      context.modeNotice ||
       (__DEV__ && process.env.EXPO_PUBLIC_PERSONAL_PREVIEW === "1"
         ? "Vista de prueba · datos ficticios · NFC no disponible"
         : ""),
