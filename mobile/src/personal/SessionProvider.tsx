@@ -14,6 +14,7 @@ import { PersonalClient } from "./client";
 import { secrets } from "./storage";
 import { nfc, NfcCapabilities } from "./nfc";
 import { NfcMode } from "./types";
+import { bluetooth } from "./bluetooth";
 
 const preferencesKey = "nexaccess.personal.preferences.v1";
 const initialCapabilities: NfcCapabilities = {
@@ -31,8 +32,27 @@ const defaultClient = () =>
         : "https://nx.rattenkoenig.net/api/v1"),
     secrets,
     fetch,
-    () => nfc.disable(),
-    (id, credential, expiresAt) => nfc.configure(id, credential, expiresAt),
+    async () => {
+      await Promise.all([nfc.disable(), bluetooth.disable()]);
+    },
+    async (id, credential, expiresAt) => {
+      const [nfcState, bleState] = await Promise.all([
+        nfc.capabilities(),
+        bluetooth.state(),
+      ]);
+      if (!nfcState.available && !bleState.available)
+        throw new Error(
+          "Este teléfono no tiene una integración de acceso disponible.",
+        );
+      await Promise.all([
+        ...(nfcState.available
+          ? [nfc.configure(id, credential, expiresAt)]
+          : []),
+        ...(bleState.available
+          ? [bluetooth.configure(id, credential, expiresAt)]
+          : []),
+      ]);
+    },
   );
 type PersonalContext = {
   client: PersonalClient;

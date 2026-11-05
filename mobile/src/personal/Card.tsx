@@ -20,6 +20,8 @@ import {
 } from "lucide-react-native";
 import { useDesign } from "../api/Theme";
 import { usePersonal } from "./SessionProvider";
+import { bluetooth } from "./bluetooth";
+import BluetoothAccess from "./BluetoothAccess";
 import {
   nfcModes,
   pageOf,
@@ -134,7 +136,12 @@ export default function PersonalCard() {
       setNfcReady(false);
       setNfcError("");
       try {
-        if (!capabilities.available || !card || card.status !== "ACTIVA") {
+        const ble = await bluetooth.state();
+        if (
+          (!capabilities.available && !ble.available) ||
+          !card ||
+          card.status !== "ACTIVA"
+        ) {
           await client.clearNfc();
           return;
         }
@@ -149,7 +156,9 @@ export default function PersonalCard() {
     };
   }, [client, card, capabilities.available]);
   const nfcColor =
-    nfcReady && capabilities.enabled ? color.success : color.warning;
+    nfcReady && capabilities.available && capabilities.enabled
+      ? color.success
+      : color.warning;
   const chosen = nfcModes.find((mode) => mode.key === nfcMode)!;
   const labels = {
     ACTIVA: "Activa",
@@ -296,7 +305,7 @@ export default function PersonalCard() {
                   {
                     alignItems: "flex-start",
                     backgroundColor:
-                      nfcReady && capabilities.enabled
+                      nfcReady && capabilities.available && capabilities.enabled
                         ? color.successBg
                         : color.warningBg,
                     borderRadius: 12,
@@ -307,7 +316,7 @@ export default function PersonalCard() {
                 <ShieldCheck size={20} color={nfcColor} />
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={[s.label, { color: nfcColor, marginBottom: 0 }]}>
-                    {nfcReady && capabilities.enabled
+                    {nfcReady && capabilities.available && capabilities.enabled
                       ? "Tarjeta preparada para NFC"
                       : capabilities.available
                         ? "NFC no está listo"
@@ -315,7 +324,9 @@ export default function PersonalCard() {
                   </Text>
                   <Text style={[s.muted, { color: nfcColor }]}>
                     {nfcError ||
-                      (nfcReady && capabilities.enabled
+                      (nfcReady &&
+                      capabilities.available &&
+                      capabilities.enabled
                         ? "Acercá el teléfono al lector NexAccess actualizado. El lector indicará si el acceso está autorizado o rechazado."
                         : capabilities.reason ||
                           "Comprobando la credencial vinculada a este teléfono…")}
@@ -330,6 +341,7 @@ export default function PersonalCard() {
             </>
           )
         )}
+        <BluetoothAccess />
         <View style={s.card}>
           <Text style={s.sectionTitle}>Vincular este teléfono</Text>
           <Text style={s.muted}>
