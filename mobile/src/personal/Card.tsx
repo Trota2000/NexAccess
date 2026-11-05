@@ -41,7 +41,7 @@ import {
 } from "./ui";
 
 export default function PersonalCard() {
-  const { client, user, notice, nfcMode, setNfcMode, capabilities } =
+  const { client, user, notice, accessMode, setAccessMode, capabilities } =
     usePersonal();
   const { color, styles: s } = useDesign(styles);
   const employeeId = user?.employeeId;
@@ -53,6 +53,7 @@ export default function PersonalCard() {
   const [open, setOpen] = useState(false);
   const [choosingCard, setChoosingCard] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [modeError, setModeError] = useState("");
   const [installation, setInstallation] = useState("");
   const [installationError, setInstallationError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -159,7 +160,7 @@ export default function PersonalCard() {
     nfcReady && capabilities.available && capabilities.enabled
       ? color.success
       : color.warning;
-  const chosen = nfcModes.find((mode) => mode.key === nfcMode)!;
+  const chosen = nfcModes.find((mode) => mode.key === accessMode)!;
   const labels = {
     ACTIVA: "Activa",
     INACTIVA: "Inactiva",
@@ -384,8 +385,11 @@ export default function PersonalCard() {
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Modo NFC: ${chosen.title}`}
-            onPress={() => setOpen(true)}
+            accessibilityLabel={`Modo de acceso: ${chosen.title}`}
+            onPress={() => {
+              setModeError("");
+              setOpen(true);
+            }}
             style={[s.row, { minHeight: 48, justifyContent: "space-between" }]}
           >
             <View style={{ flex: 1, gap: 4 }}>
@@ -396,10 +400,7 @@ export default function PersonalCard() {
             </View>
             <ChevronRight size={20} color={color.primary} />
           </Pressable>
-          <Text style={s.muted}>
-            La preferencia se guarda en este teléfono. Su disponibilidad depende
-            de Android y de la integración NFC.
-          </Text>
+          <Text style={s.muted}>El modo se aplica a NFC y Bluetooth.</Text>
         </View>
       </ScrollView>
       {open && (
@@ -427,15 +428,16 @@ export default function PersonalCard() {
                 accessibilityRole="radio"
                 accessibilityLabel={option.title}
                 accessibilityState={{
-                  checked: nfcMode === option.key,
+                  checked: accessMode === option.key,
                   disabled,
                 }}
                 disabled={disabled}
                 onPress={() => {
                   setSaving(true);
-                  void setNfcMode(option.key)
+                  setModeError("");
+                  void setAccessMode(option.key)
                     .then(() => setOpen(false))
-                    .catch((e) => setError(message(e)))
+                    .catch((e) => setModeError(message(e)))
                     .finally(() => setSaving(false));
                 }}
                 style={[
@@ -444,11 +446,11 @@ export default function PersonalCard() {
                     alignItems: "flex-start",
                     borderWidth: 1,
                     borderColor:
-                      nfcMode === option.key ? color.primary : color.border,
+                      accessMode === option.key ? color.primary : color.border,
                     borderRadius: 12,
                     padding: 16,
                     backgroundColor:
-                      nfcMode === option.key ? color.soft : color.card,
+                      accessMode === option.key ? color.soft : color.card,
                     opacity: disabled ? 0.5 : 1,
                   },
                 ]}
@@ -460,16 +462,13 @@ export default function PersonalCard() {
                   </Text>
                   <Text style={s.muted}>{option.description}</Text>
                 </View>
-                {option.key === nfcMode && (
+                {option.key === accessMode && (
                   <Check size={20} color={color.primary} />
                 )}
               </Pressable>
             );
           })}
-          <Text style={s.muted}>
-            “En todo momento” depende del teléfono y no funciona con NFC
-            desactivado o restricciones del sistema.
-          </Text>
+          {!!modeError && <Notice error>{modeError}</Notice>}
         </Sheet>
       )}
       {choosingCard && (

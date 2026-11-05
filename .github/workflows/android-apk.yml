@@ -8,6 +8,7 @@ on:
         feature/android-apk-build,
         feature/nfc-hce-prototype,
         feature/bluetooth-access,
+        fix/shared-access-mode,
       ]
     paths:
       - "mobile/**"
@@ -102,8 +103,8 @@ jobs:
           mkdir -p ../artifacts
           cp "$apk" ../artifacts/NexAccess-prueba.apk
           "$build_tools/aapt" dump badging "$apk" > ../artifacts/APK-manifest.txt
-          grep -F "versionCode='5'" ../artifacts/APK-manifest.txt
-          grep -F "versionName='1.3.0'" ../artifacts/APK-manifest.txt
+          grep -F "versionCode='6'" ../artifacts/APK-manifest.txt
+          grep -F "versionName='1.3.1'" ../artifacts/APK-manifest.txt
           "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.hce.NexAccessHceService'
           "$build_tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F 'net.nexaccess.ble.NexAccessBleService'
           grep -F 'android.permission.BLUETOOTH_SCAN' ../artifacts/APK-manifest.txt
@@ -127,7 +128,7 @@ jobs:
           grep -F 'F04E4558414301' ../artifacts/NFC-service.xmltree.txt
           cd ../artifacts
           sha256sum NexAccess-prueba.apk > SHA256SUMS.txt
-          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.3.0 (5)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo" "Bluetooth BLE: NXB1; requiere firmware esp32-ble y prueba fisica" > BUILD.txt
+          printf '%s\n' "Commit: $GITHUB_SHA" "Version: 1.3.1 (6)" "API: $EXPO_PUBLIC_API_URL" "Firma: prueba (no Play Store)" "ABI: arm64-v8a, armeabi-v7a" "NFC HCE: NX01 y SELECT directo" "Bluetooth BLE: NXB1; requiere firmware esp32-ble y prueba fisica" > BUILD.txt
       - name: Publicar APK descargable
         id: artifact
         uses: actions/upload-artifact@v4
